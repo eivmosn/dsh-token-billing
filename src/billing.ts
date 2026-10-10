@@ -26,6 +26,13 @@ export function formatExactTokens(value: number): string {
   return value.toLocaleString('en-US')
 }
 
+export function formatTokens(value: number): string {
+  if (value >= 1e6) return `${(value / 1e6).toFixed(1)}M`
+  if (value >= 1e4) return `${Math.round(value / 1e3)}K`
+  if (value >= 1e3) return `${(value / 1e3).toFixed(1)}K`
+  return String(value)
+}
+
 export function formatBalance(amount: string, symbol: string): string {
   const raw = typeof amount === 'string' ? amount.trim() : ''
 
