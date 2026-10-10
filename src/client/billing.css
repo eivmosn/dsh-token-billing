@@ -155,9 +155,19 @@ button.tb-pill[aria-expanded="true"] {
 
 .tb-details {
   color: var(--dsw-alias-label-tertiary);
+  margin: -3px 0;
+  display: block;
+}
+
+.tb-row {
   grid-template-columns: minmax(76px, auto) minmax(0, 1fr);
-  gap: 6px 16px;
-  margin: 0;
+  gap: 0 16px;
+  align-items: baseline;
+  margin: 0 -8px;
+  padding: 3px 8px;
+  border-radius: 6px;
+  background-color: transparent;
+  transition: background-color 0.18s ease;
   display: grid;
 }
 
@@ -165,12 +175,25 @@ button.tb-pill[aria-expanded="true"] {
 .tb-details dd {
   min-width: 0;
   margin: 0;
+  transition: color 0.18s ease;
 }
 
 .tb-details dd {
   color: var(--dsw-alias-label-secondary);
   font-variant-numeric: tabular-nums;
   text-align: right;
+}
+
+.tb-row:hover {
+  background-color: color-mix(in srgb, var(--dsw-alias-label-primary) 4%, transparent);
+}
+
+.tb-row:hover dt {
+  color: var(--dsw-alias-label-secondary);
+}
+
+.tb-row:hover dd {
+  color: var(--dsw-alias-label-primary);
 }
 
 .tb-rateToggle {
@@ -392,7 +415,10 @@ button.tb-pill.tb-over[aria-expanded="true"] {
 
   .tb-rateToggleChevron,
   .tb-rateReveal,
-  .tb-rateRevealInner {
+  .tb-rateRevealInner,
+  .tb-row,
+  .tb-details dt,
+  .tb-details dd {
     transition: none;
   }
 }

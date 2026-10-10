@@ -11,14 +11,22 @@ export function UnitRatesCard({ rate, peak }: UnitRatesCardProps): ReactNode {
   return (
     <div className="tb-rateCard" data-token-billing-rates>
       <dl className="tb-details">
-        <dt>未缓存输入</dt>
-        <dd>{formatRate(toCny(rate.miss))}</dd>
-        <dt>缓存读取</dt>
-        <dd>{formatRate(toCny(rate.hit))}</dd>
-        <dt>缓存写入</dt>
-        <dd>{formatRate(toCny(rate.write))}</dd>
-        <dt>输出</dt>
-        <dd>{formatRate(toCny(rate.out))}</dd>
+        <div className="tb-row">
+          <dt>未缓存输入</dt>
+          <dd>{formatRate(toCny(rate.miss))}</dd>
+        </div>
+        <div className="tb-row">
+          <dt>缓存读取</dt>
+          <dd>{formatRate(toCny(rate.hit))}</dd>
+        </div>
+        <div className="tb-row">
+          <dt>缓存写入</dt>
+          <dd>{formatRate(toCny(rate.write))}</dd>
+        </div>
+        <div className="tb-row">
+          <dt>输出</dt>
+          <dd>{formatRate(toCny(rate.out))}</dd>
+        </div>
       </dl>
       <div className="tb-note">
         {peak

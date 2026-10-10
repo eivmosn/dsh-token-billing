@@ -69,6 +69,15 @@ describe('BillingPanel', () => {
     expect(html).toContain('3,500,000')
   })
 
+  it('wraps each label and value pair in one hoverable row', () => {
+    const html = panel(priced)
+    const details = /data-token-billing-details[^>]*>(.*?)<\/dl>/.exec(html)?.[1] ?? ''
+
+    expect(details.match(/class="tb-row"/g)).toHaveLength(5)
+    expect(details).toContain('<div class="tb-row"><dt>模型</dt><dd data-token-billing-model="">')
+    expect(details).toContain('</dd></div>')
+  })
+
   it('keeps the unit rates collapsed until asked for', () => {
     const closed = panel(priced)
     expect(closed).toContain('data-token-billing-rates-toggle')
@@ -150,6 +159,13 @@ describe('UnitRatesCard', () => {
     expect(html).toContain('¥0.09')
     expect(html).toContain('¥1.87')
     expect(html).toContain('data-token-billing-rates')
+  })
+
+  it('keeps each rate on one hoverable row', () => {
+    const html = renderToStaticMarkup(
+      createElement(UnitRatesCard, { rate: rate.rate, peak: false }),
+    )
+    expect(html.match(/class="tb-row"/g)).toHaveLength(4)
   })
 
   it('states the posture and the display conversion', () => {

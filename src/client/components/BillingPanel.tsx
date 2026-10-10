@@ -89,29 +89,33 @@ export function BillingPanel({
       {priced.kind === 'ok' && (
         <>
           <dl className="tb-details" data-token-billing-details>
-            <dt>模型</dt>
-            <dd data-token-billing-model="">{priced.modelName}</dd>
+            <div className="tb-row">
+              <dt>模型</dt>
+              <dd data-token-billing-model="">{priced.modelName}</dd>
+            </div>
             {detailRows.flatMap((row) =>
               row.tokens === 0
                 ? []
                 : [
-                    <dt key={`${row.key}-l`}>{row.label}</dt>,
-                    <dd key={`${row.key}-v`}>
-                      {`${formatExactTokens(row.tokens)} · ${formatCost(toCny(row.usd))}`}
-                    </dd>,
+                    <div className="tb-row" key={row.key}>
+                      <dt>{row.label}</dt>
+                      <dd>{`${formatExactTokens(row.tokens)} · ${formatCost(toCny(row.usd))}`}</dd>
+                    </div>,
                   ],
             )}
-            <dt>合计 token</dt>
-            <dd>{formatExactTokens(detailTokens)}</dd>
+            <div className="tb-row">
+              <dt>合计 token</dt>
+              <dd>{formatExactTokens(detailTokens)}</dd>
+            </div>
             {agents !== undefined && agents.count > 0 && (
-              <>
+              <div className="tb-row">
                 <dt>子智能体</dt>
                 <dd data-token-billing-agents={agents.count}>
                   {agents.unreported > 0
                     ? `${agents.count} 个 · ${formatCost(agents.cny)} · ${agents.unreported} 个未上报`
                     : `${agents.count} 个 · ${formatCost(agents.cny)}`}
                 </dd>
-              </>
+              </div>
             )}
           </dl>
 
