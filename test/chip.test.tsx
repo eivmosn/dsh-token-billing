@@ -1,8 +1,10 @@
 import { createElement, type ComponentType } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it } from 'vitest'
 
 import { BillingChip } from '../src/client/components/BillingChip.tsx'
+import { bindLocale } from '../src/client/locale.ts'
+import { useService } from './stubs/locale.ts'
 
 const Chip = BillingChip as unknown as ComponentType<Record<string, unknown>>
 
@@ -54,5 +56,19 @@ describe('BillingChip', () => {
       }),
     )
     expect(chip).not.toContain('计费中')
+  })
+})
+
+describe('the English locale', () => {
+  afterEach(() => {
+    bindLocale(undefined)
+  })
+
+  it('speaks English and keeps no Chinese', () => {
+    useService(() => 'en')
+    const html = render(true)
+
+    expect(html).toContain('Session cost')
+    expect(html).not.toMatch(/[\u4e00-\u9fff]/)
   })
 })

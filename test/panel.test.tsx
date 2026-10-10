@@ -1,8 +1,10 @@
 import { createElement, type RefObject } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it } from 'vitest'
 
 import { buildBook, priceUsage, type PriceResult } from '../src/billing.ts'
+import { bindLocale } from '../src/client/locale.ts'
+import { useService } from './stubs/locale.ts'
 import type { BalanceState } from '../src/client/stores/account-balance.ts'
 import { BillingHoverCard } from '../src/client/components/BillingHoverCard.tsx'
 import { BillingPanel, type AgentUsage } from '../src/client/components/BillingPanel.tsx'
@@ -375,5 +377,46 @@ describe('BillingHoverCard', () => {
       }),
     )
     expect(html).toContain('点击查看详情')
+  })
+})
+
+describe('the English locale', () => {
+  const CJK = /[\u4e00-\u9fff]/
+
+  afterEach(() => {
+    bindLocale(undefined)
+  })
+
+  it('leaves no Chinese in the panel', () => {
+    useService(() => 'en')
+    const html = renderToStaticMarkup(
+      createElement(BillingPanel, {
+        priced: priced as PriceResult,
+        balance,
+        headline: '¥2.98',
+        totalCny: 2.98,
+        turn: { tokens: 1_284_000, cny: 0.42 },
+        panelRef: emptyRef,
+        style: {},
+      }),
+    )
+
+    for (const label of ['Session', 'This turn', 'Model', 'Balance', 'Per 1M tokens', 'Uncached']) {
+      expect(html).toContain(label)
+    }
+    expect(html).not.toMatch(CJK)
+  })
+
+  it('leaves no Chinese in the hover card either', () => {
+    useService(() => 'en')
+    const html = renderToStaticMarkup(
+      createElement(BillingHoverCard, {
+        priced: priced as PriceResult,
+        amount: '¥2.98',
+        panelRef: emptyRef,
+        style: {},
+      }),
+    )
+    expect(html).not.toMatch(CJK)
   })
 })

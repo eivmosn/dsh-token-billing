@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
-import { bindLocale, t } from '../src/client/locale.ts'
+import { bindLocale, registerDictionaries, t } from '../src/client/locale.ts'
+import { useService } from './stubs/locale.ts'
 
 describe('the locale binding', () => {
   it('falls back to Chinese when the host offers no locale service', () => {
@@ -9,26 +10,49 @@ describe('the locale binding', () => {
     expect(t('chip.turnTokens', { tokens: '1,234' })).toBe('本轮 1,234 tok')
   })
 
-  it('reads the active locale when the host offers one', () => {
-    bindLocale({ getLocale: () => ({ active: 'en' }) })
+  it('reads the active locale once a service is bound', () => {
+    useService(() => 'en')
     expect(t('panel.session')).toBe('Session')
     expect(t('panel.turn')).toBe('This turn')
     expect(t('chip.turnTokens', { tokens: '1,234' })).toBe('turn 1,234 tok')
     expect(t('bucket.write')).toBe('Cache write')
   })
 
-  it('prefers whatever the service resolves, including its own params', () => {
-    bindLocale({
-      getLocale: () => ({ active: 'en' }),
-      bind: () => (key: string, params?: Record<string, unknown>) =>
-        `${key}=${String(params?.n ?? '')}`,
-    })
-    expect(t('anything', { n: 3 })).toBe('anything=3')
+  it('follows a language change made after the plugin bound', () => {
+    let active = 'zh'
+    useService(() => active)
+    expect(t('panel.session')).toBe('会话合计')
+
+    active = 'en'
+    expect(t('panel.session')).toBe('Session')
   })
 
-  it('keeps every dictionary entry short enough for a dock cell', () => {
-    bindLocale({ getLocale: () => ({ active: 'en' }) })
-    for (const key of ['panel.model', 'bucket.miss', 'bucket.hit', 'bucket.write', 'bucket.out', 'panel.rates', 'panel.session', 'panel.turn', 'panel.balance']) {
+  it('keeps the binding when the dictionary registration is disposed', () => {
+    const service = {
+      register: () => () => undefined,
+      bind: () => (key: string) => (key === 'panel.session' ? 'Session' : key),
+    }
+    registerDictionaries(service)
+    bindLocale(service)
+    const dispose = registerDictionaries(service)
+
+    dispose()
+    expect(t('panel.session')).toBe('Session')
+  })
+
+  it('keeps every entry short enough for a shared dock cell', () => {
+    useService(() => 'en')
+    for (const key of [
+      'panel.model',
+      'bucket.miss',
+      'bucket.hit',
+      'bucket.write',
+      'bucket.out',
+      'panel.rates',
+      'panel.session',
+      'panel.turn',
+      'panel.balance',
+    ]) {
       expect(t(key).length).toBeLessThanOrEqual(13)
     }
   })

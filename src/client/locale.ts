@@ -79,13 +79,40 @@ const en: Record<string, string> = {
 }
 
 interface LocaleService {
-  register?: (namespace: string, locale: string, dict: Record<string, string>) => unknown
+  register?: (namespace: string, dicts: Record<string, Record<string, string>>) => unknown
   bind?: (namespace: string) => (key: string, params?: Record<string, unknown>) => string
-  getLocale?: () => { active?: string } | undefined
 }
 
-let viaService: ((key: string, params?: Record<string, unknown>) => string) | undefined
-let dictionary = zh
+type Translate = (key: string, params?: Record<string, unknown>) => string
+
+let bound: Translate | undefined
+
+function asService(input: unknown): LocaleService | undefined {
+  return input !== null && typeof input === 'object' ? (input as LocaleService) : undefined
+}
+
+export function registerDictionaries(input: unknown): () => void {
+  const locale = asService(input)
+  if (locale?.register === undefined) return () => undefined
+  try {
+    const dispose = locale.register(NAMESPACE, { zh, en })
+    return typeof dispose === 'function' ? (dispose as () => void) : () => undefined
+  } catch {
+    return () => undefined
+  }
+}
+
+export function bindLocale(input: unknown): void {
+  const locale = asService(input)
+  bound = undefined
+  if (locale?.bind === undefined) return
+  try {
+    const translate = locale.bind(NAMESPACE)
+    if (typeof translate === 'function') bound = translate
+  } catch {
+    bound = undefined
+  }
+}
 
 function fill(template: string, params: Record<string, unknown> | undefined): string {
   if (params === undefined) return template
@@ -94,31 +121,8 @@ function fill(template: string, params: Record<string, unknown> | undefined): st
   )
 }
 
-export function bindLocale(service: unknown): () => void {
-  const reset = (): void => {
-    viaService = undefined
-    dictionary = zh
-  }
-  const locale = service as LocaleService | undefined
-  viaService = undefined
-  if (locale === undefined || locale === null || typeof locale !== 'object') {
-    dictionary = zh
-    return reset
-  }
-  try {
-    locale.register?.(NAMESPACE, 'zh', zh)
-    locale.register?.(NAMESPACE, 'en', en)
-    const bound = locale.bind?.(NAMESPACE)
-    if (typeof bound === 'function') viaService = (key, params) => bound(key, params)
-    dictionary = locale.getLocale?.()?.active === 'en' ? en : zh
-  } catch {
-    dictionary = zh
-  }
-  return reset
-}
-
 export function t(key: string, params?: Record<string, unknown>): string {
-  const fromService = viaService?.(key, params)
+  const fromService = bound?.(key, params)
   if (fromService !== undefined && fromService !== key) return fromService
-  return fill(dictionary[key] ?? zh[key] ?? key, params)
+  return fill(zh[key] ?? key, params)
 }
