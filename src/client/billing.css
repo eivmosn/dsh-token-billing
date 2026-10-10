@@ -76,12 +76,7 @@ button.tb-pill[aria-expanded="true"] {
   border: 0;
   border-radius: var(--dsw-radius-lg);
   padding: 16px;
-  background-color: var(--dsw-specific-menu);
-  background-image: linear-gradient(
-    180deg,
-    color-mix(in srgb, var(--dsw-alias-label-primary) 4%, transparent) 0%,
-    transparent 30%
-  );
+  background-color: var(--dsw-alias-bg-layer-1);
   -webkit-backdrop-filter: var(--dsw-menu-backdrop-filter);
   backdrop-filter: var(--dsw-menu-backdrop-filter);
   --dsw-elevation-stroke-color: var(--dsw-alias-border-l1);
@@ -135,7 +130,7 @@ button.tb-pill[aria-expanded="true"] {
 .tb-titleRule {
   height: 1px;
   margin-bottom: 12px;
-  background: var(--dsw-alias-border-l2);
+  background: var(--dsw-alias-border-l1);
 }
 
 .tb-titleValue {
@@ -257,7 +252,7 @@ button.tb-pill[aria-expanded="true"] {
   margin-top: 10px;
   padding: 11px 12px 10px;
   border-radius: var(--dsw-radius-md);
-  background-color: color-mix(in srgb, var(--dsw-alias-label-primary) 4%, transparent);
+  background-color: color-mix(in srgb, var(--dsw-alias-label-primary) 2%, transparent);
   box-shadow: inset 0 0 0 1px var(--dsw-alias-border-l1);
   --tb-dot-alpha: 0.34;
   --tb-dot-fade: linear-gradient(180deg, #000 0, transparent 34px);
@@ -281,7 +276,7 @@ button.tb-pill[aria-expanded="true"] {
   gap: 16px;
   margin-top: 14px;
   padding-top: 12px;
-  border-top: 1px solid var(--dsw-alias-border-l2);
+  border-top: 1px solid var(--dsw-alias-border-l1);
   font-weight: 500;
   display: flex;
 }
@@ -308,12 +303,7 @@ button.tb-pill[aria-expanded="true"] {
   border: 0;
   border-radius: var(--dsw-radius-md);
   padding: 9px 11px;
-  background-color: var(--dsw-specific-menu);
-  background-image: linear-gradient(
-    180deg,
-    color-mix(in srgb, var(--dsw-alias-label-primary) 4%, transparent) 0%,
-    transparent 38%
-  );
+  background-color: var(--dsw-alias-bg-layer-1);
   -webkit-backdrop-filter: var(--dsw-menu-backdrop-filter);
   backdrop-filter: var(--dsw-menu-backdrop-filter);
   --dsw-elevation-stroke-color: var(--dsw-alias-border-l1);
