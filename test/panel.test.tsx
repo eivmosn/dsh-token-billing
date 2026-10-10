@@ -102,7 +102,8 @@ describe('BillingPanel', () => {
     expect(html).toContain('1,000,000 · ¥0.933')
     expect(html).toContain('2,000,000 · ¥0.187')
     expect(html).toContain('500,000 · ¥0.933')
-    expect(html).toContain('合计 token')
+    expect(html).toContain('会话合计')
+    expect(html).toContain('3,500,000 · ¥2.05')
     expect(html).toContain('3,500,000')
   })
 
@@ -176,6 +177,7 @@ describe('BillingPanel', () => {
     )
     expect(withTurn).toContain('本次对话')
     expect(withTurn).toContain('1,284,000 · ¥0.42')
+    expect(withTurn).toContain('会话合计')
 
     const without = renderToStaticMarkup(
       createElement(BillingPanel, {

@@ -83,6 +83,7 @@ export function BillingPanel({
   turn,
 }: BillingPanelProps): ReactNode {
   const animatedTurnCny = useCountUp(turn?.cny ?? 0)
+  const animatedCny = useCountUp(totalCny)
 
   const detailRows = rows ?? (priced.kind === 'ok' ? priced.rows : [])
   const detailTokens = totalTokens ?? (priced.kind === 'ok' ? priced.totalTokens : 0)
@@ -174,14 +175,16 @@ export function BillingPanel({
                   ],
             )}
             {turn !== undefined && (
-              <div className="tb-row tb-turnRow" data-token-billing-turn-value="">
+              <div className="tb-row" data-token-billing-turn-value="">
                 <dt>本次对话</dt>
                 <dd>{`${formatExactTokens(turn.tokens)} · ${formatCost(animatedTurnCny)}`}</dd>
               </div>
             )}
             <div className="tb-row">
-              <dt>合计 token</dt>
-              <dd>{formatExactTokens(detailTokens)}</dd>
+              <dt>会话合计</dt>
+              <dd data-token-billing-session-value="">
+                {`${formatExactTokens(detailTokens)} · ${formatCost(animatedCny)}`}
+              </dd>
             </div>
             {agents !== undefined && agents.count > 0 && (
               <div

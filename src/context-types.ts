@@ -111,10 +111,18 @@ export interface SessionListState {
   projectionsBySession?: Record<string, ProjectionSnapshot | undefined>
 }
 
+export interface SessionStatusEntry {
+  running?: boolean
+  pendingInteraction?: unknown
+  completionUnread?: boolean
+}
+
+export type SessionStatusMap = ReadonlyMap<string, SessionStatusEntry>
+
 export interface BillingChipProps {
   useProjection<T = unknown>(name: string): T
 
-  useSessionStatus?: <T>(selector: (status: string) => T) => T
+  useSessionStatus?: <T>(selector: (statuses: SessionStatusMap) => T) => T
 
   useSessions?: <T>(selector: (state: SessionListState) => T) => T
 

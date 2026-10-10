@@ -137,7 +137,8 @@ describe('the dock chip balance suffix', () => {
     const html = renderToStaticMarkup(
       createElement(Chip, {
         useProjection: () => ({ uncachedInputTokens: 1_000 }),
-        useSessionStatus: (selector: (status: string) => unknown) => selector('idle'),
+        useSessionStatus: (selector: (status: unknown) => unknown) =>
+          selector(new Map([['s', { running: false }]])),
       }),
     )
 
@@ -154,12 +155,14 @@ describe('the dock chip balance suffix', () => {
     const html = renderToStaticMarkup(
       createElement(Chip, {
         useProjection: () => ({ uncachedInputTokens: 1_000 }),
-        useSessionStatus: (selector: (status: string) => unknown) => selector('idle'),
+        useSessionStatus: (selector: (status: unknown) => unknown) =>
+          selector(new Map([['s', { running: false }]])),
       }),
     )
 
     expect(html).toContain('data-token-billing-balance-now')
-    expect(html).toContain('/ ¥29.66')
+    expect(html).toContain('data-token-billing-balance-now')
+    expect(html).toContain('¥29.66')
     expect(html).toContain('账户余额 ¥29.66')
   })
 })

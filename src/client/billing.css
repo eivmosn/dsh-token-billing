@@ -5,6 +5,7 @@
   font-size: calc(var(--dsh-content-font-size-secondary, 13px) - 1px);
   line-height: calc(20px + var(--dsh-content-font-delta-secondary, 0px));
   justify-content: center;
+  align-items: center;
   display: flex;
   order: 9999;
 }
@@ -16,6 +17,7 @@
 
 .tb-anchor {
   min-width: 0;
+  align-items: center;
   display: inline-flex;
   position: relative;
 }
@@ -38,7 +40,7 @@
   display: inline-flex;
 }
 
-.tb-pill svg {
+.tb-pill .tb-icon {
   flex: none;
   width: 14px;
   height: 14px;
@@ -529,35 +531,11 @@ button.tb-pill[aria-expanded="true"] {
 }
 
 .tb-live {
-  align-items: center;
-  gap: 5px;
-  display: inline-flex;
+  white-space: nowrap;
 }
 
 .tb-turn {
   font-variant-numeric: tabular-nums;
-}
-
-.tb-liveDot {
-  width: 5px;
-  height: 5px;
-  border-radius: 50%;
-  background: currentColor;
-  flex: none;
-  animation: tb-pulse 1.4s ease-in-out infinite;
-}
-
-@keyframes tb-pulse {
-  0%,
-  100% {
-    opacity: 0.25;
-    transform: scale(0.8);
-  }
-
-  50% {
-    opacity: 1;
-    transform: scale(1);
-  }
 }
 
 @supports (corner-shape: superellipse(1.25)) {
@@ -570,11 +548,6 @@ button.tb-pill[aria-expanded="true"] {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .tb-liveDot {
-    animation: none;
-    opacity: 0.7;
-  }
-
   .tb-rateToggleChevron,
   .tb-rateReveal,
   .tb-rateRevealInner,

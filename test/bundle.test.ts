@@ -90,7 +90,8 @@ describe.skipIf(!built)('the built artifacts', () => {
   it('inlines the stylesheet instead of leaving a .css module request', () => {
     const source = readFileSync(CLIENT_PATH, 'utf8')
     expect(source).toContain('.tb-pill {')
-    expect(source).toContain('@keyframes tb-pulse')
+    expect(source).toContain('.tb-balanceRow {')
+    expect(source).toContain('--tb-wash-fade')
     expect(source).not.toMatch(/require\("[^"]*\.css/)
   })
 
@@ -161,7 +162,8 @@ describe.skipIf(!built)('the built artifacts', () => {
         createElement(Chip, {
           useProjection: (name: string) =>
             name === 'tokenUsage' ? usage : { lastUsed: { provider: 'deepseek', model: 'x' } },
-          useSessionStatus: (selector: (status: string) => unknown) => selector('idle'),
+          useSessionStatus: (selector: (status: unknown) => unknown) =>
+            selector(new Map([['session-1', { running: false }]])),
         }),
       )
 

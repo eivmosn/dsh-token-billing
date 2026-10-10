@@ -20,6 +20,22 @@ import { priceBook } from '../stores/price-book.ts'
 import { BillingHoverCard } from './BillingHoverCard.tsx'
 import { BillingPanel } from './BillingPanel.tsx'
 
+function LiveElapsed(): react.ReactNode {
+  const [elapsed, setElapsed] = react.useState(0)
+
+  react.useEffect(() => {
+    const started = Date.now()
+    const id = setInterval(() => setElapsed(Math.floor((Date.now() - started) / 1000)), 1_000)
+    return () => clearInterval(id)
+  }, [])
+
+  return (
+    <span className="tb-live" data-token-billing-live="">
+      {elapsed >= 3 ? `${elapsed}s` : '计费中'}
+    </span>
+  )
+}
+
 export function BillingChip({
   useProjection,
   useSessionStatus,
@@ -30,7 +46,10 @@ export function BillingChip({
   const selection = useProjection<ModelSelection | undefined>('modelSelection')
   const provider = selection?.next?.provider ?? selection?.lastUsed?.provider
   const model = selection?.next?.model ?? selection?.lastUsed?.model
-  const status = useSessionStatus === undefined ? undefined : useSessionStatus((value) => value)
+  const running =
+    useSessionStatus === undefined
+      ? false
+      : useSessionStatus((statuses) => statuses.get(sessionId ?? '')?.running === true)
 
   const sessionState = useSessions === undefined ? undefined : useSessions((state) => state)
 
@@ -56,19 +75,6 @@ export function BillingChip({
     const id = setInterval(() => setNow(Date.now()), POSTURE_REFRESH_MS)
     return () => clearInterval(id)
   }, [])
-
-  const running = status === 'running'
-
-  const [elapsed, setElapsed] = react.useState(0)
-  react.useEffect(() => {
-    if (!running) {
-      setElapsed(0)
-      return undefined
-    }
-    const started = Date.now()
-    const id = setInterval(() => setElapsed(Math.floor((Date.now() - started) / 1000)), 1_000)
-    return () => clearInterval(id)
-  }, [running])
 
   const previousRunning = react.useRef(false)
   const [baseline, setBaseline] = react.useState<UsageBuckets | undefined>(undefined)
@@ -116,7 +122,7 @@ export function BillingChip({
   )
 
   const turn =
-    baseline !== undefined && turnPriced?.kind === 'ok' && turnPriced.totalTokens > 0
+    baseline !== undefined && turnPriced?.kind === 'ok'
       ? { tokens: turnPriced.totalTokens, cny: turnPriced.totalCny }
       : undefined
 
@@ -148,24 +154,31 @@ export function BillingChip({
     <span className="tb-label">
       <span className="tb-amount">{headline}</span>
       {balanceText !== undefined && (
-        <span className="tb-balanceNow" data-token-billing-balance-now="">
-          {` / ${balanceText}`}
-        </span>
+        <>
+          <span className="tb-sep" aria-hidden>
+            /
+          </span>
+          <span className="tb-balanceNow" data-token-billing-balance-now="">
+            {balanceText}
+          </span>
+        </>
+      )}
+      {turn !== undefined && (
+        <>
+          <span className="tb-sep" aria-hidden>
+            ·
+          </span>
+          <span className="tb-turn" data-token-billing-turn="">
+            {`本轮花费 ${formatCost(animatedTurnCny)}`}
+          </span>
+        </>
       )}
       {running && (
         <>
           <span className="tb-sep" aria-hidden>
             ·
           </span>
-          <span className="tb-live" data-token-billing-live="">
-            {turn !== undefined && turn.cny > 0 && (
-              <span className="tb-turn" data-token-billing-turn="">
-                {`+${formatCost(animatedTurnCny)}`}
-              </span>
-            )}
-            <span className="tb-liveDot" aria-hidden />
-            {elapsed >= 3 ? `${elapsed}s` : '计费中'}
-          </span>
+          <LiveElapsed />
         </>
       )}
     </span>
@@ -203,7 +216,7 @@ export function BillingChip({
             setOpen(!open)
           }}
         >
-          <IconDataOutlineRegular />
+          <IconDataOutlineRegular className="tb-icon" />
           {chipLabel}
         </button>
       </span>
