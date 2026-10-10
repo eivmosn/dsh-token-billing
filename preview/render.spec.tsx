@@ -117,6 +117,7 @@ const TOKENS = {
 const STATIC_TOKENS: Record<string, string> = {
   '--dsw-static-deepseek-400': '#7aaaff',
   '--dsw-static-blue-400': '#60a5fa',
+  '--dsw-static-blue-500': '#3b82f6',
   '--dsw-static-green-400': '#4ed17e',
   '--dsw-static-amber-400': '#f7ad31',
 }
