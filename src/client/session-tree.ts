@@ -25,23 +25,20 @@ export function labelOf(
   return raw === '' || REMINDER_PREFIX.test(raw) ? shortId(id) : raw
 }
 
-function catalogLabelsOf(
-  byId: Record<string, SessionSummary | undefined>,
-  rootId: string,
-): CatalogLabels {
+function catalogLabelsOf(state: SessionListState, rootId: string): CatalogLabels {
   const catalog: CatalogLabels = new Map()
+  const byId = state.byId
   const seen = new Set<string>()
   let id: string | undefined = rootId
 
   while (id !== undefined && !seen.has(id)) {
     seen.add(id)
-    for (const entry of projectionsOf(byId[id])?.subagentCatalog?.head?.values ?? []) {
+    for (const entry of state.projectionsBySession?.[id]?.values?.subagentCatalog ?? []) {
+      const childId = entry.id ?? entry.childId
       const label = entry.label?.trim()
-      if (entry.childId !== undefined && label !== undefined && label !== '') {
-        catalog.set(entry.childId, label)
-      }
+      if (childId !== undefined && label !== undefined && label !== '') catalog.set(childId, label)
     }
-    id = byId[id]?.parentId ?? byId[id]?.parentSession
+    id = byId?.[id]?.parentId ?? byId?.[id]?.parentSession
   }
 
   return catalog
@@ -61,10 +58,13 @@ function projectionsOf(row: SessionSummary | undefined): SessionProjections | un
 }
 
 export function collectChildUsage(
-  byId: Record<string, SessionSummary | undefined> | undefined,
+  state: SessionListState | undefined,
   rootId: string | undefined,
 ): TreeUsage {
-  if (byId === undefined || rootId === undefined || rootId === '') return EMPTY
+  const byId = state?.byId
+  if (state === undefined || byId === undefined || rootId === undefined || rootId === '') {
+    return EMPTY
+  }
 
   const childrenOf = new Map<string, string[]>()
   for (const id of Object.keys(byId)) {
@@ -77,7 +77,7 @@ export function collectChildUsage(
     else list.push(id)
   }
 
-  const catalog = catalogLabelsOf(byId, rootId)
+  const catalog = catalogLabelsOf(state, rootId)
   const sources: UsageSource[] = []
   let agentSessions = 0
   let unreported = 0

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import type { SessionSummary } from '../src/context-types.ts'
+import type { SessionListState, SessionSummary } from '../src/context-types.ts'
 import { collectChildUsage, labelOf } from '../src/client/session-tree.ts'
 
 function row(overrides: Partial<SessionSummary> = {}): SessionSummary {
@@ -32,7 +32,7 @@ describe('collectChildUsage', () => {
       grandchild: row({ parentId: 'child' }),
       stranger: row(),
     })
-    const tree = collectChildUsage(byId, 'root')
+    const tree = collectChildUsage({ byId }, 'root')
     expect(tree.agentSessions).toBe(2)
     expect(tree.sources).toHaveLength(2)
     expect(tree.sources.map((source) => source.provider)).toEqual(['p', 'p'])
@@ -50,7 +50,7 @@ describe('collectChildUsage', () => {
         },
       }),
     })
-    expect(collectChildUsage(byId, 'root').sources[0]).toEqual({
+    expect(collectChildUsage({ byId }, 'root').sources[0]).toEqual({
       usage: { uncachedInputTokens: 5 },
       provider: 'openai',
       model: 'gpt-9',
@@ -65,7 +65,7 @@ describe('collectChildUsage', () => {
       warm: row({ parentId: 'root' }),
       cold: { parentId: 'root' },
     })
-    const tree = collectChildUsage(byId, 'root')
+    const tree = collectChildUsage({ byId }, 'root')
     expect(tree.agentSessions).toBe(2)
     expect(tree.sources).toHaveLength(1)
     expect(tree.unreported).toBe(1)
@@ -77,7 +77,7 @@ describe('collectChildUsage', () => {
       blank: row({ parentId: 'root', blank: true }),
       orphan: row(),
     })
-    expect(collectChildUsage(byId, 'root').agentSessions).toBe(0)
+    expect(collectChildUsage({ byId }, 'root').agentSessions).toBe(0)
   })
 
   it('accepts the alternate projection field and the parentSession spelling', () => {
@@ -88,7 +88,7 @@ describe('collectChildUsage', () => {
         projections: { tokenUsage: { outputTokens: 7 } },
       },
     })
-    const tree = collectChildUsage(byId, 'root')
+    const tree = collectChildUsage({ byId }, 'root')
     expect(tree.sources[0]?.usage).toEqual({ outputTokens: 7 })
     expect(tree.sources[0]?.provider).toBeUndefined()
   })
@@ -100,7 +100,7 @@ describe('collectChildUsage', () => {
       loopA: row({ parentId: 'loopB' }),
       loopB: row({ parentId: 'loopA' }),
     })
-    const tree = collectChildUsage(byId, 'root')
+    const tree = collectChildUsage({ byId }, 'root')
     expect(tree.agentSessions).toBe(0)
     expect(tree.sources).toHaveLength(0)
   })
@@ -111,52 +111,54 @@ describe('collectChildUsage', () => {
       agentSessions: 0,
       unreported: 0,
     })
-    expect(collectChildUsage(index({ root: row() }), undefined).agentSessions).toBe(0)
-    expect(collectChildUsage(index({ root: row() }), '').agentSessions).toBe(0)
+    expect(collectChildUsage({ byId: index({ root: row() }) }, undefined).agentSessions).toBe(0)
+    expect(collectChildUsage({ byId: index({ root: row() }) }, '').agentSessions).toBe(0)
   })
 })
 
 describe('the family label sources', () => {
-  const lead = {
-    projectionValues: {
-      subagentCatalog: {
-        head: {
-          values: [
-            { childId: 'child-a', label: 'Own and ship the divider colour' },
-            { childId: 'child-b', label: 'Research multi-agent token accounting' },
+  const state: SessionListState = {
+    byId: {
+      root: {},
+      'child-a': withUsage({
+        parentId: 'root',
+        title: '<system-reminder> You are teammate "divi',
+      }),
+      'child-b': withUsage({
+        parentId: 'root',
+        title: '<system-reminder> A skill is a reusable set',
+      }),
+    },
+    projectionsBySession: {
+      root: {
+        values: {
+          subagentCatalog: [
+            { id: 'child-a', label: 'Own and ship the divider colour' },
+            { id: 'child-b', label: 'Research multi-agent token accounting' },
           ],
         },
       },
     },
   }
-  const byId = {
-    root: lead,
-    'child-a': withUsage({
-      parentId: 'root',
-      title: '<system-reminder> You are teammate "divi',
-    }),
-    'child-b': withUsage({
-      parentId: 'root',
-      title: '<system-reminder> A skill is a reusable set',
-    }),
-  }
 
   it('labels every child with the description the parent recorded', () => {
-    const tree = collectChildUsage(byId, 'root')
-    expect(tree.sources.map((source) => source.label)).toEqual([
+    expect(collectChildUsage(state, 'root').sources.map((source) => source.label)).toEqual([
       'Own and ship the divider colour',
       'Research multi-agent token accounting',
     ])
   })
 
-  it('reads the catalog from an ancestor, so a child still sees its siblings', () => {
-    expect(collectChildUsage(byId, 'child-a').sources).toEqual([])
+  it('reads the catalog from an ancestor, so viewing a child resolves its siblings', () => {
+    const catalogOnRoot: SessionListState = {
+      ...state,
+      byId: { ...state.byId, child: { parentId: 'child-a' } },
+    }
+    expect(collectChildUsage(catalogOnRoot, 'child-a').sources).toEqual([])
   })
 
   it('falls back to the title only when no description was recorded', () => {
-    const noCatalog = {
-      root: { projectionValues: {} },
-      'child-a': withUsage({ parentId: 'root', title: '统一 starship 空白行配置' }),
+    const noCatalog: SessionListState = {
+      byId: { root: {}, 'child-a': withUsage({ parentId: 'root', title: '统一 starship 空白行配置' }) },
     }
     expect(collectChildUsage(noCatalog, 'root').sources[0]?.label).toBe('统一 starship 空白行配置')
   })

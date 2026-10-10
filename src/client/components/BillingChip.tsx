@@ -30,11 +30,11 @@ export function BillingChip({
   const model = selection?.next?.model ?? selection?.lastUsed?.model
   const status = useSessionStatus === undefined ? undefined : useSessionStatus((value) => value)
 
-  const sessionRows = useSessions === undefined ? undefined : useSessions((state) => state.byId)
+  const sessionState = useSessions === undefined ? undefined : useSessions((state) => state)
 
   const descendants = react.useMemo(
-    () => collectChildUsage(sessionRows, sessionId),
-    [sessionRows, sessionId],
+    () => collectChildUsage(sessionState, sessionId),
+    [sessionState, sessionId],
   )
 
   const book = react.useSyncExternalStore(

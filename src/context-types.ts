@@ -80,14 +80,19 @@ export interface ModelSelection {
 }
 
 export interface CatalogEntry {
+  id?: string
   childId?: string
   label?: string
+}
+
+export interface ProjectionSnapshot {
+  state?: string
+  values?: { subagentCatalog?: CatalogEntry[] }
 }
 
 export interface SessionProjections {
   tokenUsage?: unknown
   modelSelection?: ModelSelection
-  subagentCatalog?: { head?: { values?: CatalogEntry[] } }
 }
 
 export interface SessionSummary {
@@ -103,6 +108,7 @@ export interface SessionSummary {
 
 export interface SessionListState {
   byId?: Record<string, SessionSummary | undefined>
+  projectionsBySession?: Record<string, ProjectionSnapshot | undefined>
 }
 
 export interface BillingChipProps {
