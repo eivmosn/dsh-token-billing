@@ -20,8 +20,11 @@
  *     Everything else on the chip — the cost estimate and the model rates — is
  *     derived in the browser from the `tokenUsage` session projection and the
  *     public models.dev registry. No Host state is involved, so this half
- *     deliberately adds none.
+ *     deliberately adds none, and imports nothing at runtime.
  */
+
+import { BALANCE_ROUTE, parseBalancePayload } from './billing.ts'
+import type { HostContext, HttpRequest, HttpResponse } from './context-types.ts'
 
 /** Cordis plugin name, matching the manifest entry id. */
 export const name = 'dsh-token-billing'
@@ -38,9 +41,6 @@ const API_KEY_REF = 'DEEPSEEK_API_KEY'
 
 /** Official balance endpoint. */
 const BALANCE_URL = 'https://api.deepseek.com/user/balance'
-
-/** Route the client half reads. Deliberately namespaced to this plugin. */
-const ROUTE_PATH = '/plugins/dsh-token-billing/balance'
 
 /** Bound one upstream call so a stalled network cannot pin the route. */
 const REQUEST_TIMEOUT_MS = 15_000
@@ -61,26 +61,29 @@ const MAX_BODY_BYTES = 64 * 1024
  * @param trustedHosts - additional trusted authorities, when the runtime has them.
  * @returns true when the request may be served.
  */
-function isTrustedRequest(req, trustedHosts) {
-  const headers = req?.headers ?? {}
+export function isTrustedRequest(
+  req: HttpRequest,
+  trustedHosts: readonly string[] | undefined,
+): boolean {
+  const headers = req.headers ?? {}
   const host = headers.host
   if (typeof host !== 'string' || host === '') return false
 
-  let hostUrl
+  let hostUrl: URL
   try {
     hostUrl = new URL(`http://${host}`)
   } catch {
     return false
   }
 
-  const name = hostUrl.hostname
-  const loopback = name === '127.0.0.1' || name === '::1' || name === 'localhost'
+  const hostname = hostUrl.hostname
+  const loopback = hostname === '127.0.0.1' || hostname === '::1' || hostname === 'localhost'
   const trusted = Array.isArray(trustedHosts)
     ? trustedHosts.some((entry) => {
         try {
-          return new URL(`http://${entry}`).hostname === name
+          return new URL(`http://${entry}`).hostname === hostname
         } catch {
-          return entry === name
+          return entry === hostname
         }
       })
     : false
@@ -94,8 +97,10 @@ function isTrustedRequest(req, trustedHosts) {
     // Absent Origin is fine, per the Host fence above.
     return origin === undefined
   }
+  // A repeated header is not a browser origin; refuse rather than guess.
+  if (typeof origin !== 'string') return false
   try {
-    return new URL(origin).hostname === name
+    return new URL(origin).hostname === hostname
   } catch {
     return false
   }
@@ -107,7 +112,7 @@ function isTrustedRequest(req, trustedHosts) {
  * @param status - status code.
  * @param payload - JSON-serializable body.
  */
-function writeJson(res, status, payload) {
+function writeJson(res: HttpResponse, status: number, payload: unknown): void {
   const body = JSON.stringify(payload)
   res.writeHead(status, {
     'content-type': 'application/json; charset=utf-8',
@@ -127,11 +132,17 @@ function writeJson(res, status, payload) {
  * @param ctx - the Host context.
  * @returns the key, or undefined.
  */
-async function resolveApiKey(ctx) {
+async function resolveApiKey(ctx: HostContext): Promise<string | undefined> {
   const resolved = await ctx.credentials.resolve(API_KEY_REF)
   const value = resolved?.value
   return typeof value === 'string' && value.trim() !== '' ? value.trim() : undefined
 }
+
+/** Why one upstream balance call did not yield a body. */
+type BalanceFailure = number | 'oversized' | 'timeout' | 'transport'
+
+/** The outcome of one upstream balance call. */
+type BalanceFetch = { ok: true; payload: unknown } | { ok: false; status: BalanceFailure }
 
 /**
  * Query the official balance endpoint.
@@ -139,7 +150,7 @@ async function resolveApiKey(ctx) {
  * @param apiKey - the bearer token.
  * @returns the parsed payload, or a typed failure.
  */
-async function fetchBalance(apiKey) {
+async function fetchBalance(apiKey: string): Promise<BalanceFetch> {
   const controller = new AbortController()
   const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS)
   try {
@@ -153,10 +164,11 @@ async function fetchBalance(apiKey) {
       return { ok: false, status: response.status }
     }
     const text = await response.text()
-    if (text.length > MAX_BODY_BYTES) return { ok: false, status: 'oversized' }
-    return { ok: true, payload: JSON.parse(text) }
+    if (Buffer.byteLength(text, 'utf8') > MAX_BODY_BYTES) return { ok: false, status: 'oversized' }
+    return { ok: true, payload: JSON.parse(text) as unknown }
   } catch (error) {
-    return { ok: false, status: error?.name === 'AbortError' ? 'timeout' : 'transport' }
+    const aborted = error instanceof Error && error.name === 'AbortError'
+    return { ok: false, status: aborted ? 'timeout' : 'transport' }
   } finally {
     clearTimeout(timer)
   }
@@ -167,12 +179,12 @@ async function fetchBalance(apiKey) {
  *
  * @param ctx - the Host context (credentials + webServer injected).
  */
-export function apply(ctx) {
+export function apply(ctx: HostContext): void {
   ctx.effect(
     () =>
       ctx.webServer.register({
         kind: 'exact',
-        path: ROUTE_PATH,
+        path: BALANCE_ROUTE,
         handler: async (req, res) => {
           const trustedHosts = ctx.get('webRuntime')?.trustedHosts
           if (!isTrustedRequest(req, trustedHosts)) {
@@ -184,7 +196,7 @@ export function apply(ctx) {
             return
           }
 
-          let apiKey
+          let apiKey: string | undefined
           try {
             apiKey = await resolveApiKey(ctx)
           } catch {
@@ -207,26 +219,8 @@ export function apply(ctx) {
           // Validate the wire payload before it leaves the Host. The upstream
           // body is untrusted input, so a malformed shape is reported as such
           // instead of being forwarded for the browser to trip over.
-          const payload = result.payload
-          const infos = Array.isArray(payload?.balance_infos) ? payload.balance_infos : []
-          const wallets = []
-          for (const entry of infos) {
-            const currency = entry?.currency === 'USD' ? 'USD' : entry?.currency === 'CNY' ? 'CNY' : undefined
-            const total = typeof entry?.total_balance === 'string' ? entry.total_balance : undefined
-            if (currency === undefined || total === undefined) continue
-            wallets.push({
-              currency,
-              totalBalance: total,
-              grantedBalance: typeof entry?.granted_balance === 'string' ? entry.granted_balance : '0.00',
-              toppedUpBalance: typeof entry?.topped_up_balance === 'string' ? entry.topped_up_balance : '0.00',
-            })
-          }
-
-          writeJson(res, 200, {
-            ok: true,
-            isAvailable: payload?.is_available === true,
-            wallets,
-          })
+          const { isAvailable, wallets } = parseBalancePayload(result.payload)
+          writeJson(res, 200, { ok: true, isAvailable, wallets })
         },
       }),
     'dsh-token-billing: balance route',
