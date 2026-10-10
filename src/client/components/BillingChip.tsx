@@ -5,6 +5,7 @@ import { createPortal } from 'react-dom'
 import {
   formatBalance,
   formatCost,
+  formatExactTokens,
   priceSessionTree,
   priceUsage,
   subtractBuckets,
@@ -19,22 +20,6 @@ import { accountBalance } from '../stores/account-balance.ts'
 import { priceBook } from '../stores/price-book.ts'
 import { BillingHoverCard } from './BillingHoverCard.tsx'
 import { BillingPanel } from './BillingPanel.tsx'
-
-function LiveElapsed(): react.ReactNode {
-  const [elapsed, setElapsed] = react.useState(0)
-
-  react.useEffect(() => {
-    const started = Date.now()
-    const id = setInterval(() => setElapsed(Math.floor((Date.now() - started) / 1000)), 1_000)
-    return () => clearInterval(id)
-  }, [])
-
-  return (
-    <span className="tb-live" data-token-billing-live="">
-      {elapsed >= 3 ? `${elapsed}s` : '计费中'}
-    </span>
-  )
-}
 
 export function BillingChip({
   useProjection,
@@ -169,17 +154,25 @@ export function BillingChip({
             ·
           </span>
           <span className="tb-turn" data-token-billing-turn="">
-            {`本轮花费 ${formatCost(animatedTurnCny)}`}
+            {`本轮 ${formatExactTokens(turn.tokens)} tok`}
+            <span className="tb-sep" aria-hidden>
+              ·
+            </span>
+            {formatCost(animatedTurnCny)}
           </span>
         </>
       )}
       {running && (
-        <>
-          <span className="tb-sep" aria-hidden>
-            ·
-          </span>
-          <LiveElapsed />
-        </>
+        <svg
+          className="tb-liveDot"
+          width="5"
+          height="5"
+          viewBox="0 0 5 5"
+          aria-hidden="true"
+          focusable="false"
+        >
+          <circle cx="2.5" cy="2.5" r="2.5" fill="currentColor" />
+        </svg>
       )}
     </span>
   )

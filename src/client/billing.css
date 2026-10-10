@@ -534,6 +534,14 @@ button.tb-pill[aria-expanded="true"] {
   white-space: nowrap;
 }
 
+.tb-liveDot {
+  color: var(--dsw-alias-state-success-primary);
+  width: 5px;
+  height: 5px;
+  margin-left: 6px;
+  vertical-align: middle;
+}
+
 .tb-turn {
   font-variant-numeric: tabular-nums;
 }
