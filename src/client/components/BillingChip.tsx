@@ -154,11 +154,7 @@ export function BillingChip({
             ·
           </span>
           <span className="tb-turn" data-token-billing-turn="">
-            {`本轮 ${formatExactTokens(turn.tokens)} tok`}
-            <span className="tb-sep" aria-hidden>
-              ·
-            </span>
-            {`花费 ${formatCost(animatedTurnCny)}`}
+            {`本轮消耗 ${formatExactTokens(turn.tokens)} tok 花费 ${formatCost(animatedTurnCny)}`}
           </span>
         </>
       )}
