@@ -116,7 +116,7 @@ export function BillingChip({
   )
 
   const turn =
-    turnPriced?.kind === 'ok' && turnPriced.totalTokens > 0
+    baseline !== undefined && turnPriced?.kind === 'ok'
       ? { tokens: turnPriced.totalTokens, cny: turnPriced.totalCny }
       : undefined
 
@@ -158,7 +158,7 @@ export function BillingChip({
             ·
           </span>
           <span className="tb-live" data-token-billing-live="">
-            {turn !== undefined && (
+            {turn !== undefined && turn.cny > 0 && (
               <span className="tb-turn" data-token-billing-turn="">
                 {`+${formatCost(animatedTurnCny)}`}
               </span>
