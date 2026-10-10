@@ -116,7 +116,7 @@ export function BillingChip({
   )
 
   const turn =
-    baseline !== undefined && turnPriced?.kind === 'ok'
+    baseline !== undefined && turnPriced?.kind === 'ok' && turnPriced.totalTokens > 0
       ? { tokens: turnPriced.totalTokens, cny: turnPriced.totalCny }
       : undefined
 
