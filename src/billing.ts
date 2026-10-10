@@ -411,7 +411,7 @@ export function priceSessionTree(
     agents: {
       count: agentCount,
       cny: agentCny,
-      items: agentItems.sort((left, right) => right.cny - left.cny).slice(0, MAX_AGENT_ITEMS),
+      items: agentItems.toSorted((left, right) => right.cny - left.cny).slice(0, MAX_AGENT_ITEMS),
       overflow: Math.max(0, agentCount - MAX_AGENT_ITEMS),
     },
   }
