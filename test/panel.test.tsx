@@ -5,7 +5,7 @@ import { describe, expect, it } from 'vitest'
 import { buildBook, priceUsage, type PriceResult } from '../src/billing.ts'
 import type { BalanceState } from '../src/client/stores/account-balance.ts'
 import { BillingHoverCard } from '../src/client/components/BillingHoverCard.tsx'
-import { BillingPanel } from '../src/client/components/BillingPanel.tsx'
+import { BillingPanel, type AgentUsage } from '../src/client/components/BillingPanel.tsx'
 import { UnitRatesCard } from '../src/client/components/UnitRatesCard.tsx'
 
 const OFF_PEAK = new Date('2026-10-12T12:00:00Z')
@@ -42,13 +42,46 @@ const balance: BalanceState = {
 
 const emptyRef: RefObject<HTMLDivElement | null> = { current: null }
 
-function panel(p: PriceResult, opts: { over?: boolean; open?: boolean } = {}): string {
+const agents: AgentUsage = {
+  count: 2,
+  cny: 0.727,
+  unreported: 0,
+  items: [
+    {
+      id: 'agent-1',
+      label: '梳理计费口径',
+      providerId: 'deepseek',
+      modelId: 'deepseek-flash',
+      modelName: 'DeepSeek V4 Flash',
+      cny: 0.51,
+      tokens: 268_000,
+      peak: false,
+    },
+    {
+      id: 'agent-2',
+      label: '复核缓存命中',
+      providerId: 'deepseek',
+      modelId: 'deepseek-flash',
+      modelName: 'DeepSeek V4 Flash',
+      cny: 0.217,
+      tokens: 96_000,
+      peak: false,
+    },
+  ],
+  overflow: 0,
+}
+
+function panel(
+  p: PriceResult,
+  opts: { open?: boolean; totalCny?: number; agents?: AgentUsage } = {},
+): string {
   return renderToStaticMarkup(
     createElement(BillingPanel, {
       priced: p,
       balance,
-      overThreshold: opts.over ?? false,
       headline: '¥ —',
+      totalCny: opts.totalCny ?? (p.kind === 'ok' ? p.totalCny : 0),
+      agents: opts.agents,
       panelRef: emptyRef,
       style: {},
       defaultRatesOpen: opts.open ?? false,
@@ -95,9 +128,13 @@ describe('BillingPanel', () => {
     expect(panel(peakPriced)).toContain('高峰')
   })
 
-  it('marks the amount once the spend threshold is crossed', () => {
-    expect(panel(priced)).toContain('class="tb-titleValue"')
-    expect(panel(priced, { over: true })).toContain('tb-titleValue tb-over')
+  it('shows the whole tree total in the title, not just the root session', () => {
+    const root = priced.kind === 'ok' ? priced.totalCny : 0
+    const html = panel(priced, { agents, totalCny: root + agents.cny })
+
+    expect(html).toContain('<span class="tb-titleValue">¥2.78</span>')
+    expect(html).not.toContain('<span class="tb-titleValue">¥2.05</span>')
+    expect(html).toContain('2 个 · ¥0.727')
   })
 
   it('explains each unpriced state instead of showing a figure', () => {
@@ -132,8 +169,8 @@ describe('BillingPanel', () => {
         createElement(BillingPanel, {
           priced: { kind: 'no-book' },
           balance: state,
-          overThreshold: false,
           headline: '¥ —',
+          totalCny: 0,
           panelRef: emptyRef,
           style: {},
         }),

@@ -5,7 +5,7 @@ import { it } from 'vitest'
 
 import { buildBook, priceUsage, type PriceResult } from '../src/billing.ts'
 import { BillingHoverCard } from '../src/client/components/BillingHoverCard.tsx'
-import { BillingPanel } from '../src/client/components/BillingPanel.tsx'
+import { BillingPanel, type AgentUsage } from '../src/client/components/BillingPanel.tsx'
 import type { BalanceState } from '../src/client/stores/account-balance.ts'
 
 const OFF_PEAK = new Date('2026-10-12T12:00:00Z')
@@ -49,19 +49,54 @@ const balance: BalanceState = {
 
 const emptyRef: RefObject<HTMLDivElement | null> = { current: null }
 
+const ROOT_CNY = priced.kind === 'ok' ? priced.totalCny : 0
+
+const AGENTS: AgentUsage = {
+  count: 2,
+  cny: 0.727,
+  unreported: 0,
+  items: [
+    {
+      id: 'agent-1',
+      label: '梳理计费口径',
+      providerId: 'deepseek',
+      modelId: 'deepseek-flash',
+      modelName: 'DeepSeek V4 Flash',
+      cny: 0.51,
+      tokens: 268_000,
+      peak: false,
+    },
+    {
+      id: 'agent-2',
+      label: '复核缓存命中',
+      providerId: 'deepseek',
+      modelId: 'deepseek-flash',
+      modelName: 'DeepSeek V4 Flash',
+      cny: 0.217,
+      tokens: 96_000,
+      peak: false,
+    },
+  ],
+  overflow: 0,
+}
+
 function hover(p: PriceResult, amount: string): string {
   return renderToStaticMarkup(
     createElement(BillingHoverCard, { priced: p, amount, panelRef: emptyRef, style: {} }),
   )
 }
 
-function panel(p: PriceResult, opts: { over?: boolean; open?: boolean } = {}): string {
+function panel(
+  p: PriceResult,
+  opts: { open?: boolean; totalCny?: number; agents?: AgentUsage } = {},
+): string {
   return renderToStaticMarkup(
     createElement(BillingPanel, {
       priced: p,
       balance,
-      overThreshold: opts.over ?? false,
       headline: '¥ —',
+      totalCny: opts.totalCny ?? (p.kind === 'ok' ? p.totalCny : 0),
+      agents: opts.agents,
       panelRef: emptyRef,
       style: {},
       defaultRatesOpen: opts.open ?? false,
@@ -144,7 +179,7 @@ it('writes the preview page', () => {
     .map((theme) => {
       const cells = [
         cell('hover · 正常', hover(priced as PriceResult, '¥1.86')),
-        cell('hover · 超阈值', hover(heavy as PriceResult, '¥138.20（已超 ¥5）')),
+        cell('hover · 大额', hover(heavy as PriceResult, '¥138.20')),
         cell(
           'hover · 无挂牌价',
           hover({ kind: 'unpriced', provider: 'p', model: 'm' }, '该模型暂无挂牌价'),
@@ -152,7 +187,10 @@ it('writes the preview page', () => {
         cell('panel · 正常（默认收起）', panel(priced as PriceResult)),
         cell('panel · 展开单价', panel(priced as PriceResult, { open: true })),
         cell('panel · 高峰', panel(peakPriced as PriceResult, { open: true })),
-        cell('panel · 超阈值', panel(heavy as PriceResult, { over: true })),
+        cell(
+          'panel · 含子智能体',
+          panel(priced as PriceResult, { agents: AGENTS, totalCny: ROOT_CNY + AGENTS.cny }),
+        ),
         cell('panel · 价格表未就绪', panel({ kind: 'no-book' })),
       ].join('')
       return `<section data-theme="${theme}" style="${tokensCss(theme)}"><h2>${theme}</h2><div class="grid">${cells}</div></section>`

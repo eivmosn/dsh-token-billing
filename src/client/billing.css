@@ -353,19 +353,6 @@ button.tb-pill[aria-expanded="true"] {
   margin-top: 3px;
 }
 
-.tb-over {
-  color: var(--dsw-alias-state-error-primary);
-}
-
-button.tb-pill.tb-over:hover,
-button.tb-pill.tb-over[aria-expanded="true"] {
-  color: var(--dsw-alias-state-error-primary);
-}
-
-.tb-over .tb-amount {
-  font-weight: 600;
-}
-
 .tb-amount {
   font-variant-numeric: tabular-nums;
   transition: color 0.25s var(--ds-ease-in-out, ease-in-out);

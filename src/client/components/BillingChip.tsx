@@ -3,7 +3,6 @@ import * as react from 'react'
 import { createPortal } from 'react-dom'
 
 import {
-  ALERT_THRESHOLD_CNY,
   formatCost,
   priceSessionTree,
   priceUsage,
@@ -105,8 +104,6 @@ export function BillingChip({
 
   if (priced.kind === 'no-usage') return null
 
-  const overThreshold = priced.kind === 'ok' && totalCny >= ALERT_THRESHOLD_CNY
-
   const headline =
     priced.kind === 'ok' ? formatCost(animatedCny) : priced.kind === 'no-book' ? '¥ —' : '¥ ?'
 
@@ -131,17 +128,13 @@ export function BillingChip({
 
   const hoverAmount =
     priced.kind === 'ok'
-      ? `${formatCost(totalCny)}${overThreshold ? `（已超 ¥${ALERT_THRESHOLD_CNY}）` : ''}`
+      ? formatCost(totalCny)
       : priced.kind === 'no-book'
         ? '价格表加载中…'
         : '该模型暂无挂牌价'
 
   return (
-    <div
-      className={overThreshold ? 'tb-root tb-over' : 'tb-root'}
-      data-token-billing
-      data-token-billing-over={overThreshold ? '' : undefined}
-    >
+    <div className="tb-root" data-token-billing>
       <span
         ref={(node) => {
           anchorRef.current = node
@@ -156,9 +149,7 @@ export function BillingChip({
           className="tb-pill"
           aria-haspopup="dialog"
           aria-expanded={open}
-          aria-label={`${anchorLabel} ${formatCost(totalCny)}${
-            overThreshold ? `，已超过 ${ALERT_THRESHOLD_CNY} 元` : ''
-          }`}
+          aria-label={`${anchorLabel} ${formatCost(totalCny)}`}
           data-token-billing-amount={priced.kind === 'ok' ? totalCny : ''}
           onClick={() => {
             setHover(false)
@@ -187,8 +178,8 @@ export function BillingChip({
           <BillingPanel
             priced={priced}
             balance={balance}
-            overThreshold={overThreshold}
             headline={headline}
+            totalCny={totalCny}
             rows={rows}
             totalTokens={totalTokens}
             agents={agents}

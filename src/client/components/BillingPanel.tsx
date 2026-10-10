@@ -5,6 +5,7 @@ import {
   formatCost,
   formatExactTokens,
   toCny,
+  type AgentRollup,
   type PricedRow,
   type PriceResult,
 } from '../../billing.ts'
@@ -13,17 +14,15 @@ import type { BalanceState } from '../stores/account-balance.ts'
 import { BalanceValue } from './BalanceValue.tsx'
 import { UnitRatesCard } from './UnitRatesCard.tsx'
 
-export interface AgentUsage {
-  count: number
-  cny: number
+export interface AgentUsage extends AgentRollup {
   unreported: number
 }
 
 export interface BillingPanelProps {
   priced: PriceResult
   balance: BalanceState
-  overThreshold: boolean
   headline: string
+  totalCny: number
   panelRef: PanelRef
   style: CSSProperties
   defaultRatesOpen?: boolean
@@ -52,8 +51,8 @@ function Chevron(): ReactNode {
 export function BillingPanel({
   priced,
   balance,
-  overThreshold,
   headline,
+  totalCny,
   panelRef,
   style,
   defaultRatesOpen = false,
@@ -80,8 +79,8 @@ export function BillingPanel({
           <IconDataOutlineRegular />
           本会话预估费用
         </span>
-        <span className={overThreshold ? 'tb-titleValue tb-over' : 'tb-titleValue'}>
-          {priced.kind === 'ok' ? formatCost(priced.totalCny) : headline}
+        <span className="tb-titleValue">
+          {priced.kind === 'ok' ? formatCost(totalCny) : headline}
         </span>
       </div>
       <div className="tb-titleRule" aria-hidden />
