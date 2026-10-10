@@ -102,12 +102,12 @@ describe('BillingPanel', () => {
 
     expect(html).toContain('本会话预估费用')
     expect(html).toContain('DeepSeek V4 Flash')
-    expect(html).toContain('1,000,000 · ¥0.933')
-    expect(html).toContain('2,000,000 · ¥0.187')
-    expect(html).toContain('500,000 · ¥0.933')
+    expect(html).toContain('1.0M · ¥0.933')
+    expect(html).toContain('2.0M · ¥0.187')
+    expect(html).toContain('500K · ¥0.933')
     expect(html).toContain('会话合计')
-    expect(html).toContain('3,500,000 · ¥2.05')
-    expect(html).toContain('3,500,000')
+    expect(html).toContain('3.5M · ¥2.05')
+    expect(html).toContain('3.5M')
   })
 
   it('wraps each label and value pair in one hoverable row', () => {
@@ -142,7 +142,7 @@ describe('BillingPanel', () => {
 
     expect(html).toContain('<span class="tb-titleValue">¥2.78</span>')
     expect(html).not.toContain('<span class="tb-titleValue">¥2.05</span>')
-    expect(html).toContain('2 个 · 2,000,000 · ¥0.727')
+    expect(html).toContain('2 个 · 2.0M · ¥0.727')
   })
 
   it('explains each unpriced state instead of showing a figure', () => {
@@ -179,7 +179,7 @@ describe('BillingPanel', () => {
       }),
     )
     expect(withTurn).toContain('本次')
-    expect(withTurn).toContain('1,284,000 · ¥0.42')
+    expect(withTurn).toContain('1.3M · ¥0.42')
     expect(withTurn).toContain('会话合计')
 
     const without = renderToStaticMarkup(

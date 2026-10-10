@@ -17,7 +17,7 @@ import { createPortal } from 'react-dom'
 
 import {
   formatCost,
-  formatExactTokens,
+  formatTokens,
   toCny,
   USAGE_URL,
   type AgentRollup,
@@ -178,20 +178,20 @@ export function BillingPanel({
                 : [
                     <div className="tb-row" key={row.key}>
                       <dt>{t(BUCKET_LABEL[row.key] ?? '') || row.label}</dt>
-                      <dd>{`${formatExactTokens(row.tokens)} · ${formatCost(toCny(row.usd))}`}</dd>
+                      <dd>{`${formatTokens(row.tokens)} · ${formatCost(toCny(row.usd))}`}</dd>
                     </div>,
                   ],
             )}
             {turn !== undefined && (
               <div className="tb-row" data-token-billing-turn-value="">
                 <dt>{t('panel.turn')}</dt>
-                <dd>{`${formatExactTokens(turn.tokens)} · ${formatCost(animatedTurnCny)}`}</dd>
+                <dd>{`${formatTokens(turn.tokens)} · ${formatCost(animatedTurnCny)}`}</dd>
               </div>
             )}
             <div className="tb-row">
               <dt>{t('panel.session')}</dt>
               <dd data-token-billing-session-value="">
-                {`${formatExactTokens(detailTokens)} · ${formatCost(animatedCny)}`}
+                {`${formatTokens(detailTokens)} · ${formatCost(animatedCny)}`}
               </dd>
             </div>
             {agents !== undefined && agents.count > 0 && (
@@ -218,8 +218,8 @@ export function BillingPanel({
                 </dt>
                 <dd data-token-billing-agents={agents.count}>
                   {agents.unreported > 0
-                    ? `${t('panel.agentsCount', { count: agents.count, tokens: formatExactTokens(agents.tokens), cost: formatCost(agents.cny) })}${t('panel.agentsUnreported', { count: agents.unreported })}`
-                    : t('panel.agentsCount', { count: agents.count, tokens: formatExactTokens(agents.tokens), cost: formatCost(agents.cny) })}
+                    ? `${t('panel.agentsCount', { count: agents.count, tokens: formatTokens(agents.tokens), cost: formatCost(agents.cny) })}${t('panel.agentsUnreported', { count: agents.unreported })}`
+                    : t('panel.agentsCount', { count: agents.count, tokens: formatTokens(agents.tokens), cost: formatCost(agents.cny) })}
                 </dd>
               </div>
             )}
