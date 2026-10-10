@@ -2,7 +2,9 @@ import {
   BUCKETS,
   PEAK_FACTOR,
   isPeak,
+  priceUsage,
   resolveRate,
+  subtractBuckets,
   toCny,
   type PriceBook,
   type Rate,
@@ -173,4 +175,48 @@ export function attributedBuckets(attribution: Attribution): UsageBuckets {
   let total: UsageBuckets = {}
   for (const group of attribution.groups) total = add(total, group.buckets)
   return total
+}
+
+export interface TurnSpend {
+  tokens: number
+  cny: number
+}
+
+export interface TurnWindow {
+  usage: UsageBuckets
+  at: number
+}
+
+export interface FallbackRoute {
+  provider?: string
+  model?: string
+  at: Date
+}
+
+export function attributeTurn(
+  requests: readonly BilledRequest[],
+  book: PriceBook,
+  baseline: TurnWindow,
+  current: UsageBuckets,
+  fallback: FallbackRoute,
+): TurnSpend | undefined {
+  if (Object.keys(book.branches).length === 0) return undefined
+
+  const run = attributeRequests(
+    requests.filter((request) => request.at >= baseline.at),
+    book,
+  )
+
+  const delta = subtractBuckets(current, baseline.usage)
+  const rest = subtractBuckets(delta, attributedBuckets(run))
+  const restTokens = countTokens(rest)
+  const restPriced =
+    restTokens > 0
+      ? priceUsage(rest, book, fallback.provider, fallback.model, fallback.at)
+      : undefined
+
+  return {
+    tokens: run.totalTokens + (restPriced?.kind === 'ok' ? restPriced.totalTokens : 0),
+    cny: run.totalCny + (restPriced?.kind === 'ok' ? restPriced.totalCny : 0),
+  }
 }

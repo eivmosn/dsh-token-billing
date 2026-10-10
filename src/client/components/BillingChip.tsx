@@ -4,6 +4,7 @@ import { createPortal } from 'react-dom'
 
 import {
   attributeRequests,
+  attributeTurn,
   attributedBuckets,
   countTokens,
   isDeepSeekRoute,
@@ -28,7 +29,7 @@ import { t } from '../locale.ts'
 import { billedRequestsOf } from '../trajectory.ts'
 import { collectChildUsage } from '../session-tree.ts'
 import { accountBalance } from '../stores/account-balance.ts'
-import { readTurnBaseline, writeTurnBaseline } from '../stores/turn-baseline.ts'
+import { readTurnBaseline, writeTurnBaseline, type TurnBaseline } from '../stores/turn-baseline.ts'
 import { priceBook } from '../stores/price-book.ts'
 import { BillingHoverCard } from './BillingHoverCard.tsx'
 import { BillingPanel } from './BillingPanel.tsx'
@@ -71,7 +72,7 @@ export function BillingChip({
     return () => clearInterval(id)
   }, [])
 
-  const [baseline, setBaseline] = react.useState<UsageBuckets | undefined>(() =>
+  const [baseline, setBaseline] = react.useState<TurnBaseline | undefined>(() =>
     running ? readTurnBaseline(sessionId) : undefined,
   )
   const previousRunning = react.useRef(baseline !== undefined)
@@ -84,8 +85,9 @@ export function BillingChip({
     if (previousRunning.current) return
     previousRunning.current = true
     const start = usage ?? {}
-    setBaseline(start)
-    writeTurnBaseline(sessionId, start)
+    const at = Date.now()
+    setBaseline({ usage: start, at })
+    writeTurnBaseline(sessionId, start, at)
   }, [running, usage, sessionId])
 
   const [hover, setHover] = react.useState(false)
@@ -158,18 +160,17 @@ export function BillingChip({
     return { rows, totalCny, totalTokens }
   }, [session, usage, book.book, provider, model, now])
 
-  const turnPriced = react.useMemo(
+  const turn = react.useMemo(
     () =>
-      baseline !== undefined && usage !== undefined
-        ? priceUsage(subtractBuckets(usage, baseline), book.book, provider, model, new Date(now))
-        : null,
-    [baseline, usage, book.book, provider, model, now],
+      baseline === undefined || usage === undefined
+        ? undefined
+        : attributeTurn(requests, book.book, baseline, usage, {
+            provider,
+            model,
+            at: new Date(now),
+          }),
+    [baseline, usage, requests, book.book, provider, model, now],
   )
-
-  const turn =
-    baseline !== undefined && turnPriced?.kind === 'ok'
-      ? { tokens: turnPriced.totalTokens, cny: turnPriced.totalCny }
-      : undefined
 
   const rootCny = attributed?.totalCny ?? (priced.kind === 'ok' ? priced.totalCny : 0)
   const rootTokens = attributed?.totalTokens ?? (priced.kind === 'ok' ? priced.totalTokens : 0)

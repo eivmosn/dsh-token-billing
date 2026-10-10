@@ -1,7 +1,13 @@
 import { describe, expect, it } from 'vitest'
 
-import { attributeRequests, countTokens, isPeakRequest, type BilledRequest } from '../src/attribution.ts'
-import { buildBook } from '../src/billing.ts'
+import {
+  attributeRequests,
+  attributeTurn,
+  countTokens,
+  isPeakRequest,
+  type BilledRequest,
+} from '../src/attribution.ts'
+import { buildBook, emptyBook } from '../src/billing.ts'
 
 const book = buildBook({
   deepseek: {
@@ -124,5 +130,60 @@ describe('per-request attribution', () => {
     expect(empty.groups).toHaveLength(0)
     expect(empty.totalTokens).toBe(0)
     expect(countTokens({ uncachedInputTokens: 10, outputTokens: 5 })).toBe(15)
+  })
+})
+
+describe('pricing one turn', () => {
+  const opened = { usage: { uncachedInputTokens: 0 }, at: PEAK }
+  const fallback = { provider: 'deepseek', model: 'deepseek-flash', at: new Date(OFF) }
+
+  it('prices the turn at the period each request was made in', () => {
+    const spend = attributeTurn(
+      [
+        request(PEAK + 1_000, 'deepseek-flash', { uncachedInputTokens: 1_000_000 }),
+        request(OFF, 'deepseek-flash', { uncachedInputTokens: 1_000_000 }),
+      ],
+      book,
+      opened,
+      { uncachedInputTokens: 2_000_000 },
+      fallback,
+    )
+
+    expect(spend?.cny).toBeCloseTo(3, 6)
+    expect(spend?.tokens).toBe(2_000_000)
+  })
+
+  it('ignores requests that finished before the turn opened', () => {
+    const spend = attributeTurn(
+      [
+        request(PEAK - 60_000, 'deepseek-flash', { uncachedInputTokens: 1_000_000 }),
+        request(PEAK + 1_000, 'deepseek-flash', { uncachedInputTokens: 1_000_000 }),
+      ],
+      book,
+      opened,
+      { uncachedInputTokens: 1_000_000 },
+      fallback,
+    )
+
+    expect(spend?.cny).toBeCloseTo(2, 6)
+  })
+
+  it('prices whatever the requests did not account for at the fallback route', () => {
+    const spend = attributeTurn(
+      [request(PEAK + 1_000, 'deepseek-flash', { uncachedInputTokens: 1_000_000 })],
+      book,
+      opened,
+      { uncachedInputTokens: 1_500_000 },
+      fallback,
+    )
+
+    expect(spend?.tokens).toBe(1_500_000)
+    // 1M attributed at the peak (x2) plus the 0.5M nobody accounted for, at the
+    // fallback route's own period - which is off-peak here.
+    expect(spend?.cny).toBeCloseTo(2 + 0.5, 6)
+  })
+
+  it('says nothing when there is no book to price with', () => {
+    expect(attributeTurn([], emptyBook(), opened, { uncachedInputTokens: 10 }, fallback)).toBeUndefined()
   })
 })
