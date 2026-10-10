@@ -1,0 +1,15 @@
+# dsh-token-billing bundle layer.
+#
+# One row: the plugin itself. The row references the package by name so Node
+# resolution finds the installed code. The `dsh.client` declaration in
+# package.json makes the web app additionally load `lib/client.js` as the
+# browser half, which is where the composer-dock chip is registered.
+#
+# There is deliberately NO host-side behaviour beyond loading: every figure the
+# chip shows is derived in the browser from (a) the `tokenUsage` session
+# projection that @deepseek-ai/dsh-token-meter already registers, and (b) the
+# public models.dev price registry fetched by the client half itself. No new
+# Host service, no session mutation, no model calls.
+- insert:
+    - id: dsh-token-billing
+      name: dsh-token-billing
