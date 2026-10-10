@@ -531,12 +531,14 @@ button.tb-pill[aria-expanded="true"] {
 }
 
 .tb-running {
-  color: var(--dsw-alias-state-success-primary);
-  white-space: nowrap;
-}
-
-.tb-running .tb-sep {
-  color: inherit;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  margin-left: 6px;
+  vertical-align: middle;
+  background: var(--dsw-alias-state-success-primary);
+  flex: none;
+  display: inline-block;
 }
 
 

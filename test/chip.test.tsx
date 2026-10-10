@@ -25,6 +25,7 @@ describe('BillingChip', () => {
     expect(html).toContain('data-token-billing-live')
     expect(html).toContain('tb-running')
     expect(html).toContain('计费中')
+    expect(html).not.toContain('>计费中<')
   })
 
   it('drops the marker once the session settles', () => {

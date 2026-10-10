@@ -158,14 +158,7 @@ export function BillingChip({
           </span>
         </>
       )}
-      {running && (
-        <span className="tb-running" data-token-billing-live="">
-          <span className="tb-sep" aria-hidden>
-            ·
-          </span>
-          计费中
-        </span>
-      )}
+      {running && <span className="tb-running" data-token-billing-live="" aria-hidden />}
     </span>
   )
 
@@ -194,7 +187,7 @@ export function BillingChip({
           aria-expanded={open}
           aria-label={`${anchorLabel} ${formatCost(totalCny)}${
             balanceText === undefined ? '' : `，账户余额 ${balanceText}`
-          }`}
+          }${running ? '，计费中' : ''}`}
           data-token-billing-amount={priced.kind === 'ok' ? totalCny : ''}
           onClick={() => {
             setHover(false)
