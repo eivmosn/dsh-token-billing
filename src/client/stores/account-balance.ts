@@ -29,21 +29,44 @@ export interface BalanceStore {
   refresh(): Promise<void>
 }
 
-const READ_AT_KEY = 'dsh-token-billing/balance-read-at/v1'
+const READ_AT_KEY = 'dsh-token-billing/balance-snapshot/v1'
 
-function readStoredAt(): number {
+interface StoredBalance {
+  at: number
+  status: 'ready' | 'no-key'
+  wallets: DisplayWallet[]
+  bonusWallets: DisplayWallet[]
+}
+
+function readStored(): StoredBalance | undefined {
   try {
     const raw = sessionStorage.getItem(READ_AT_KEY)
-    const value = raw === null ? Number.NaN : Number(raw)
-    return Number.isFinite(value) ? value : 0
+    if (raw === null) return undefined
+    const parsed = JSON.parse(raw) as Partial<StoredBalance>
+    if (typeof parsed.at !== 'number') return undefined
+    if (Date.now() - parsed.at >= BALANCE_RELOAD_COOLDOWN_MS) return undefined
+    if (parsed.status !== 'ready' && parsed.status !== 'no-key') return undefined
+    return {
+      at: parsed.at,
+      status: parsed.status,
+      wallets: parsed.wallets ?? [],
+      bonusWallets: parsed.bonusWallets ?? [],
+    }
   } catch {
-    return 0
+    return undefined
   }
 }
 
-function storeAt(at: number): void {
+function store(next: BalanceState): void {
+  if (next.status !== 'ready' && next.status !== 'no-key') return
   try {
-    sessionStorage.setItem(READ_AT_KEY, String(at))
+    const stored: StoredBalance = {
+      at: next.at,
+      status: next.status,
+      wallets: next.wallets,
+      bonusWallets: next.bonusWallets,
+    }
+    sessionStorage.setItem(READ_AT_KEY, JSON.stringify(stored))
   } catch {
     void 0
   }
@@ -76,7 +99,7 @@ export const accountBalance: BalanceStore = (() => {
 
     const settle = (next: BalanceState): void => {
       state = next
-      if (next.status === 'ready' || next.status === 'no-key') storeAt(next.at)
+      store(next)
       emit()
     }
 
@@ -142,8 +165,18 @@ export const accountBalance: BalanceStore = (() => {
   return {
     attach() {
       attached = true
-      const at = readStoredAt()
-      if (at !== 0 && Date.now() - at < BALANCE_RELOAD_COOLDOWN_MS) return
+      const stored = readStored()
+      if (stored !== undefined) {
+        state = {
+          status: stored.status,
+          wallets: stored.wallets,
+          bonusWallets: stored.bonusWallets,
+          error: null,
+          at: stored.at,
+        }
+        emit()
+        return
+      }
       void read(false)
     },
     detach() {

@@ -96,7 +96,11 @@ function fill(template: string, params: Record<string, unknown> | undefined): st
 
 export function bindLocale(service: unknown): void {
   const locale = service as LocaleService | undefined
-  if (locale === undefined || typeof locale !== 'object') return
+  viaService = undefined
+  if (locale === undefined || locale === null || typeof locale !== 'object') {
+    dictionary = zh
+    return
+  }
   try {
     locale.register?.(NAMESPACE, 'zh', zh)
     locale.register?.(NAMESPACE, 'en', en)
@@ -105,7 +109,6 @@ export function bindLocale(service: unknown): void {
     dictionary = locale.getLocale?.()?.active === 'en' ? en : zh
   } catch {
     dictionary = zh
-    viaService = undefined
   }
 }
 

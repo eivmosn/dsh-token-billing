@@ -9,6 +9,23 @@ import {
   type BalanceStore,
 } from '../src/client/stores/account-balance.ts'
 
+const memory = new Map<string, string>()
+
+function stubSessionStorage(): void {
+  vi.stubGlobal('sessionStorage', {
+    getItem: (key: string) => memory.get(key) ?? null,
+    setItem: (key: string, value: string) => {
+      memory.set(key, value)
+    },
+    removeItem: (key: string) => {
+      memory.delete(key)
+    },
+    clear: () => {
+      memory.clear()
+    },
+  })
+}
+
 async function freshStore(): Promise<BalanceStore> {
   vi.resetModules()
   const module = await import('../src/client/stores/account-balance.ts')
@@ -36,6 +53,8 @@ describe('the balance store', () => {
 
   beforeEach(() => {
     now = 1_000_000
+    memory.clear()
+    stubSessionStorage()
     vi.spyOn(Date, 'now').mockImplementation(() => now)
   })
 
@@ -77,6 +96,24 @@ describe('the balance store', () => {
     now += BALANCE_FRESH_MS + 1
     await store.refresh()
     expect(fetchMock).toHaveBeenCalledTimes(1)
+  })
+
+  it('restores the wallet across a reload without asking again', async () => {
+    const first = await freshStore()
+    const fetchMock = stubFetch()
+    first.attach()
+    await vi.waitFor(() => {
+      expect(first.getSnapshot().status).toBe('ready')
+    })
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+
+    const reloaded = await freshStore()
+    const after = stubFetch()
+    reloaded.attach()
+
+    expect(reloaded.getSnapshot().status).toBe('ready')
+    expect(reloaded.getSnapshot().wallets).toEqual([{ currency: 'CNY', balance: '29.66' }])
+    expect(after).not.toHaveBeenCalled()
   })
 
   it('ignores an open while the figure is fresh and re-reads after the window', async () => {
