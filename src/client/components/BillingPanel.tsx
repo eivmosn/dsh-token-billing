@@ -246,7 +246,7 @@ export function BillingPanel({
       <div className="tb-balanceRow" data-token-billing-balance>
         <span className="tb-balanceLabel">账户余额</span>
         {balance.status === 'ready' ? (
-          <Tooltip label="点击查看" side="top" align="end" portal>
+          <Tooltip label="点击查看" side="top" portal>
             <a
               className="tb-balanceValue tb-balanceLink"
               href={USAGE_URL}
