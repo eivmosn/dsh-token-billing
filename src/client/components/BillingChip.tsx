@@ -162,18 +162,7 @@ export function BillingChip({
           </span>
         </>
       )}
-      {running && (
-        <svg
-          className="tb-liveDot"
-          width="5"
-          height="5"
-          viewBox="0 0 5 5"
-          aria-hidden="true"
-          focusable="false"
-        >
-          <circle cx="2.5" cy="2.5" r="2.5" fill="currentColor" />
-        </svg>
-      )}
+
     </span>
   )
 
