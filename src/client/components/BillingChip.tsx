@@ -7,6 +7,7 @@ import {
   formatCost,
   priceSessionTree,
   priceUsage,
+  subtractBuckets,
   type UsageBuckets,
 } from '../../billing.ts'
 import type { BillingChipProps, ModelSelection } from '../../context-types.ts'
@@ -69,6 +70,15 @@ export function BillingChip({
     return () => clearInterval(id)
   }, [running])
 
+  const previousRunning = react.useRef(false)
+  const [baseline, setBaseline] = react.useState<UsageBuckets | undefined>(undefined)
+
+  react.useEffect(() => {
+    if (running === previousRunning.current) return
+    previousRunning.current = running
+    setBaseline(running ? usage : undefined)
+  }, [running, usage])
+
   const [hover, setHover] = react.useState(false)
   const [open, setOpen] = react.useState(false)
   const { anchorRef, panelRef, pos } = useOverlay(open, setOpen)
@@ -93,6 +103,19 @@ export function BillingChip({
     [sources, book.book, now],
   )
 
+  const turnPriced = react.useMemo(
+    () =>
+      running && baseline !== undefined && usage !== undefined
+        ? priceUsage(subtractBuckets(usage, baseline), book.book, provider, model, new Date(now))
+        : null,
+    [running, baseline, usage, book.book, provider, model, now],
+  )
+
+  const turn =
+    turnPriced?.kind === 'ok' && turnPriced.totalTokens > 0
+      ? { tokens: turnPriced.totalTokens, cny: turnPriced.totalCny }
+      : undefined
+
   const totalCny = priced.kind === 'ok' ? (tree?.totalCny ?? priced.totalCny) : 0
   const totalTokens = priced.kind === 'ok' ? (tree?.totalTokens ?? priced.totalTokens) : 0
   const rows = priced.kind === 'ok' ? (tree?.rows ?? priced.rows) : []
@@ -102,6 +125,7 @@ export function BillingChip({
       : undefined
 
   const animatedCny = useCountUp(totalCny)
+  const animatedTurnCny = useCountUp(turn?.cny ?? 0)
 
   if (priced.kind === 'no-usage') return null
 
@@ -130,6 +154,11 @@ export function BillingChip({
             ·
           </span>
           <span className="tb-live" data-token-billing-live="">
+            {turn !== undefined && (
+              <span className="tb-turn" data-token-billing-turn="">
+                {`+${formatCost(animatedTurnCny)}`}
+              </span>
+            )}
             <span className="tb-liveDot" aria-hidden />
             {elapsed >= 3 ? `${elapsed}s` : '计费中'}
           </span>
@@ -197,6 +226,7 @@ export function BillingChip({
             rows={rows}
             totalTokens={totalTokens}
             agents={agents}
+            turn={turn}
             panelRef={panelRef}
             style={pos ?? MEASURE_STYLE}
           />,

@@ -17,6 +17,7 @@ import {
   resolveRate,
   toCny,
   type PriceBook,
+  subtractBuckets,
   type UsageSource,
 } from '../src/billing.ts'
 
@@ -535,5 +536,25 @@ describe('priceSessionTree', () => {
         at,
       ),
     ).toBeNull()
+  })
+})
+
+describe('subtractBuckets', () => {
+  it('reports what one run added to each bucket', () => {
+    expect(
+      subtractBuckets(
+        { uncachedInputTokens: 300, cacheReadTokens: 40, outputTokens: 12 },
+        { uncachedInputTokens: 100, cacheReadTokens: 40, outputTokens: 2 },
+      ),
+    ).toEqual({ uncachedInputTokens: 200, outputTokens: 10 })
+  })
+
+  it('never reports a negative bucket when the totals move backwards', () => {
+    expect(subtractBuckets({ uncachedInputTokens: 1 }, { uncachedInputTokens: 9 })).toEqual({})
+  })
+
+  it('treats a missing bucket on either side as zero', () => {
+    expect(subtractBuckets({ outputTokens: 5 }, {})).toEqual({ outputTokens: 5 })
+    expect(subtractBuckets({}, { outputTokens: 5 })).toEqual({})
   })
 })

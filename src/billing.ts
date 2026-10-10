@@ -220,6 +220,15 @@ export interface UsageBuckets {
   outputTokens?: number
 }
 
+export function subtractBuckets(later: UsageBuckets, earlier: UsageBuckets): UsageBuckets {
+  const delta: UsageBuckets = {}
+  for (const { key } of BUCKETS) {
+    const value = (later[key] ?? 0) - (earlier[key] ?? 0)
+    if (value > 0) delta[key] = value
+  }
+  return delta
+}
+
 export const BUCKETS: ReadonlyArray<{
   key: keyof UsageBuckets
   rate: keyof Omit<Rate, 'name'>

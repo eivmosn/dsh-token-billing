@@ -162,6 +162,34 @@ describe('BillingPanel', () => {
     expect(html).toContain('+¥5.00')
   })
 
+  it('shows what the running turn has spent so far', () => {
+    const withTurn = renderToStaticMarkup(
+      createElement(BillingPanel, {
+        priced,
+        balance,
+        headline: '¥2.98',
+        totalCny: 2.98,
+        turn: { tokens: 1_284_000, cny: 0.42 },
+        panelRef: emptyRef,
+        style: {},
+      }),
+    )
+    expect(withTurn).toContain('本次对话')
+    expect(withTurn).toContain('1,284,000 · ¥0.42')
+
+    const without = renderToStaticMarkup(
+      createElement(BillingPanel, {
+        priced,
+        balance,
+        headline: '¥2.98',
+        totalCny: 2.98,
+        panelRef: emptyRef,
+        style: {},
+      }),
+    )
+    expect(without).not.toContain('本次对话')
+  })
+
   it('links a resolved wallet to the platform usage page', () => {
     const html = renderToStaticMarkup(
       createElement(BillingPanel, {

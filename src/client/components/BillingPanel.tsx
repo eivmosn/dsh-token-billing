@@ -25,6 +25,7 @@ import {
   type PriceResult,
 } from '../../billing.ts'
 import { MEASURE_STYLE } from '../constants.ts'
+import { useCountUp } from '../hooks/use-count-up.ts'
 import type { PanelRef } from '../hooks/use-overlay.ts'
 import type { BalanceState } from '../stores/account-balance.ts'
 import { BalanceValue } from './BalanceValue.tsx'
@@ -48,6 +49,7 @@ export interface BillingPanelProps {
   rows?: PricedRow[]
   totalTokens?: number
   agents?: AgentUsage
+  turn?: { tokens: number; cny: number }
 }
 
 function Chevron({ className = 'tb-rateToggleChevron' }: { className?: string }): ReactNode {
@@ -78,7 +80,10 @@ export function BillingPanel({
   rows,
   totalTokens,
   agents,
+  turn,
 }: BillingPanelProps): ReactNode {
+  const animatedTurnCny = useCountUp(turn?.cny ?? 0)
+
   const detailRows = rows ?? (priced.kind === 'ok' ? priced.rows : [])
   const detailTokens = totalTokens ?? (priced.kind === 'ok' ? priced.totalTokens : 0)
 
@@ -167,6 +172,12 @@ export function BillingPanel({
                       <dd>{`${formatExactTokens(row.tokens)} · ${formatCost(toCny(row.usd))}`}</dd>
                     </div>,
                   ],
+            )}
+            {turn !== undefined && (
+              <div className="tb-row tb-turnRow" data-token-billing-turn-value="">
+                <dt>本次对话</dt>
+                <dd>{`${formatExactTokens(turn.tokens)} · ${formatCost(animatedTurnCny)}`}</dd>
+              </div>
             )}
             <div className="tb-row">
               <dt>合计 token</dt>
