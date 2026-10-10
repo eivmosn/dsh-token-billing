@@ -323,7 +323,7 @@ describe('UnitRatesCard', () => {
 
   it('lists all four bucket rates, including the one this session never billed', () => {
     const html = renderToStaticMarkup(
-      createElement(UnitRatesCard, { rate: rate.rate, peak: false }),
+      createElement(UnitRatesCard, { rate: rate.rate }),
     )
     expect(html).toContain('未缓存输入')
     expect(html).toContain('缓存读取')
@@ -337,19 +337,21 @@ describe('UnitRatesCard', () => {
 
   it('keeps each rate on one hoverable row', () => {
     const html = renderToStaticMarkup(
-      createElement(UnitRatesCard, { rate: rate.rate, peak: false }),
+      createElement(UnitRatesCard, { rate: rate.rate }),
     )
     expect(html.match(/class="tb-row"/g)).toHaveLength(4)
   })
 
-  it('states the posture and the display conversion', () => {
-    const low = renderToStaticMarkup(createElement(UnitRatesCard, { rate: rate.rate, peak: false }))
-    expect(low).toContain('当前为低谷时段')
-    expect(low).toContain('1 CNY = 0.15 USD')
+  it('states the pricing policy and the display conversion', () => {
+    const card = renderToStaticMarkup(createElement(UnitRatesCard, { rate: rate.rate }))
 
-    const high = renderToStaticMarkup(createElement(UnitRatesCard, { rate: rate.rate, peak: true }))
-    expect(high).toContain('当前为高峰时段')
-    expect(high).not.toContain('当前为低谷时段')
+    expect(card).toContain('表内为空闲价')
+    expect(card).toContain('1 CNY = 0.15 USD')
+  })
+
+  it('shows which period the clock is in, beside the rates', () => {
+    expect(panel(priced)).toContain('>低谷<')
+    expect(panel(peakPriced)).toContain('>高峰<')
   })
 })
 

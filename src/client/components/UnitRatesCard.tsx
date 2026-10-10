@@ -5,10 +5,9 @@ import { t } from '../locale.ts'
 
 export interface UnitRatesCardProps {
   rate: Rate
-  peak: boolean
 }
 
-export function UnitRatesCard({ rate, peak }: UnitRatesCardProps): ReactNode {
+export function UnitRatesCard({ rate }: UnitRatesCardProps): ReactNode {
   return (
     <div className="tb-rateCard" data-token-billing-rates>
       <dl className="tb-details">
@@ -30,9 +29,7 @@ export function UnitRatesCard({ rate, peak }: UnitRatesCardProps): ReactNode {
         </div>
       </dl>
       <div className="tb-note">
-        {peak
-          ? t('panel.rateNotePeak')
-          : t('panel.rateNoteOff')}
+        {t('panel.rateNote')}
       </div>
       <div className="tb-note tb-rateSource">
         {t('panel.rateSource')}

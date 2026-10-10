@@ -253,7 +253,7 @@ export function BillingPanel({
 
           <div className="tb-rateReveal" data-open={ratesOpen} id={ratesId}>
             <div className="tb-rateRevealInner">
-              <UnitRatesCard rate={priced.rate} peak={priced.peak} />
+              <UnitRatesCard rate={priced.rate} />
             </div>
           </div>
         </>
