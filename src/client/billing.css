@@ -514,6 +514,11 @@ button.tb-pill[aria-expanded="true"] {
   transition: color 0.25s var(--ds-ease-in-out, ease-in-out);
 }
 
+.tb-balanceNow {
+  color: var(--dsw-alias-label-tertiary);
+  font-variant-numeric: tabular-nums;
+}
+
 .tb-live {
   align-items: center;
   gap: 5px;

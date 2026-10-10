@@ -4,11 +4,7 @@ import {
   type BalanceRead,
   type DisplayWallet,
 } from '../../billing.ts'
-import {
-  BALANCE_DEBOUNCE_MAX_MS,
-  BALANCE_DEBOUNCE_MS,
-  BALANCE_REUSE_MS,
-} from '../constants.ts'
+import { BALANCE_FRESH_MS, BALANCE_REUSE_MS } from '../constants.ts'
 
 export type BalanceStatus = 'idle' | 'loading' | 'ready' | 'no-key' | 'error'
 
@@ -41,17 +37,8 @@ export const accountBalance: BalanceStore = (() => {
 
   let attached = false
 
-  let debounceTimer: ReturnType<typeof setTimeout> | null = null
-  let debounceStartedAt = 0
-
   function emit(): void {
     for (const listener of listeners) listener()
-  }
-
-  function clearDebounce(): void {
-    if (debounceTimer !== null) clearTimeout(debounceTimer)
-    debounceTimer = null
-    debounceStartedAt = 0
   }
 
   function read(force: boolean): Promise<void> {
@@ -134,9 +121,9 @@ export const accountBalance: BalanceStore = (() => {
   return {
     attach() {
       attached = true
+      void read(false)
     },
     detach() {
-      clearDebounce()
       attached = false
     },
     subscribe(listener) {
@@ -150,22 +137,9 @@ export const accountBalance: BalanceStore = (() => {
     },
     refresh() {
       if (!attached) return Promise.resolve()
-
-      if (state.status === 'idle' || state.status === 'loading') return read(false)
-
-      if (inFlight === null && Date.now() - lastRead < BALANCE_REUSE_MS) return Promise.resolve()
-
-      if (debounceTimer === null) debounceStartedAt = Date.now()
-      else clearTimeout(debounceTimer)
-
-      const held = Date.now() - debounceStartedAt
-      const delay = held >= BALANCE_DEBOUNCE_MAX_MS ? 0 : BALANCE_DEBOUNCE_MS
-
-      debounceTimer = setTimeout(() => {
-        clearDebounce()
-        void read(false)
-      }, delay)
-      return Promise.resolve()
+      if (inFlight !== null) return inFlight
+      if (Date.now() - lastRead < BALANCE_FRESH_MS) return Promise.resolve()
+      return read(true)
     },
   }
 })()

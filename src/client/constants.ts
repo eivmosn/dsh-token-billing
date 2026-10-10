@@ -12,8 +12,6 @@ export const MEASURE_STYLE: CSSProperties = { visibility: 'hidden', left: 0, top
 
 export const BALANCE_REUSE_MS = 15_000
 
-export const BALANCE_DEBOUNCE_MS = 1_500
-
-export const BALANCE_DEBOUNCE_MAX_MS = 10_000
+export const BALANCE_FRESH_MS = 3_000
 
 export const POSTURE_REFRESH_MS = 30_000

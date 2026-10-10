@@ -3,6 +3,7 @@ import * as react from 'react'
 import { createPortal } from 'react-dom'
 
 import {
+  formatBalance,
   formatCost,
   priceSessionTree,
   priceUsage,
@@ -109,9 +110,20 @@ export function BillingChip({
 
   const anchorLabel = priced.kind === 'ok' ? '本会话预估费用' : '本会话费用'
 
+  const wallet = balance.status === 'ready' ? balance.wallets[0] : undefined
+  const balanceText =
+    wallet === undefined
+      ? undefined
+      : formatBalance(wallet.balance, wallet.currency === 'CNY' ? '¥' : '$')
+
   const chipLabel = (
     <span className="tb-label">
       <span className="tb-amount">{headline}</span>
+      {balanceText !== undefined && (
+        <span className="tb-balanceNow" data-token-billing-balance-now="">
+          {` / ${balanceText}`}
+        </span>
+      )}
       {running && (
         <>
           <span className="tb-sep" aria-hidden>
@@ -149,7 +161,9 @@ export function BillingChip({
           className="tb-pill"
           aria-haspopup="dialog"
           aria-expanded={open}
-          aria-label={`${anchorLabel} ${formatCost(totalCny)}`}
+          aria-label={`${anchorLabel} ${formatCost(totalCny)}${
+            balanceText === undefined ? '' : `，账户余额 ${balanceText}`
+          }`}
           data-token-billing-amount={priced.kind === 'ok' ? totalCny : ''}
           onClick={() => {
             setHover(false)
