@@ -384,7 +384,7 @@ export function priceSessionTree(
     totalCny += result.totalCny
     totalTokens += result.totalTokens
     if (result.peak) peak = true
-    if (index > 0) {
+    {
       agentCount += 1
       agentCny += result.totalCny
       agentItems.push({

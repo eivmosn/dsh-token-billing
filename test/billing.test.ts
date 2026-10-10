@@ -412,51 +412,36 @@ describe('the price book index', () => {
 
 describe('priceSessionTree', () => {
   const at = new Date('2026-10-12T12:00:00Z')
-  const rootUsage = { uncachedInputTokens: 1_000_000, outputTokens: 1_000_000 }
-  const agentUsage = { uncachedInputTokens: 1_000_000, outputTokens: 1_000_000 }
-  const both = { uncachedInputTokens: 2_000_000, outputTokens: 2_000_000 }
+  const flashUsage = { uncachedInputTokens: 1_000_000, outputTokens: 1_000_000 }
+  const gptUsage = { uncachedInputTokens: 1_000_000, outputTokens: 1_000_000 }
 
-  it('prices each session at its own route instead of the root route', () => {
+  it('prices each subagent at its own route instead of one shared route', () => {
     const tree = priceSessionTree(
       [
-        { usage: rootUsage, provider: 'deepseek', model: 'deepseek-flash' },
-        { usage: agentUsage, provider: 'openai', model: 'gpt-9' },
+        { usage: flashUsage, provider: 'deepseek', model: 'deepseek-flash', sessionId: 's-a' },
+        { usage: gptUsage, provider: 'openai', model: 'gpt-9', sessionId: 's-b' },
       ],
       twoRouteBook,
       at,
     )
     if (tree === null) throw new Error('expected a priced tree')
 
-    const root = priceUsage(rootUsage, twoRouteBook, 'deepseek', 'deepseek-flash', at)
-    const agent = priceUsage(agentUsage, twoRouteBook, 'openai', 'gpt-9', at)
-    if (root.kind !== 'ok' || agent.kind !== 'ok') throw new Error('fixtures must price')
+    const flash = priceUsage(flashUsage, twoRouteBook, 'deepseek', 'deepseek-flash', at)
+    const gpt = priceUsage(gptUsage, twoRouteBook, 'openai', 'gpt-9', at)
+    if (flash.kind !== 'ok' || gpt.kind !== 'ok') throw new Error('fixtures must price')
 
-    expect(tree.totalCny).toBeCloseTo(root.totalCny + agent.totalCny, 10)
-    expect(tree.agents.count).toBe(1)
-    expect(tree.agents.cny).toBeCloseTo(agent.totalCny, 10)
-    expect(tree.agents.overflow).toBe(0)
-    expect(tree.agents.items).toHaveLength(1)
-    expect(tree.agents.items[0]).toMatchObject({
-      id: 'agent-1',
-      providerId: 'openai',
-      modelId: 'gpt-9',
-      modelName: 'GPT-9',
-      tokens: 2_000_000,
-    })
+    expect(tree.totalCny).toBeCloseTo(flash.totalCny + gpt.totalCny, 10)
     expect(tree.totalTokens).toBe(4_000_000)
-
-    expect(tree.agents.cny).toBeCloseTo(toCny(30), 10)
-
-    const naive = priceUsage(both, twoRouteBook, 'deepseek', 'deepseek-flash', at)
-    if (naive.kind !== 'ok') throw new Error('fixture must price')
-    expect(tree.totalCny).toBeGreaterThan(naive.totalCny * 20)
+    expect(tree.agents.count).toBe(2)
+    expect(tree.agents.cny).toBeCloseTo(flash.totalCny + gpt.totalCny, 10)
+    expect(tree.agents.overflow).toBe(0)
   })
 
   it('sums the four buckets across every priced session', () => {
     const tree = priceSessionTree(
       [
-        { usage: rootUsage, provider: 'deepseek', model: 'deepseek-flash' },
-        { usage: agentUsage, provider: 'deepseek', model: 'deepseek-flash' },
+        { usage: flashUsage, provider: 'deepseek', model: 'deepseek-flash' },
+        { usage: gptUsage, provider: 'deepseek', model: 'deepseek-flash' },
       ],
       twoRouteBook,
       at,
@@ -468,13 +453,22 @@ describe('priceSessionTree', () => {
   })
 
   it('lists each agent with its own label, dearest first', () => {
-    const small = { uncachedInputTokens: 1_000_000 }
-    const large = { uncachedInputTokens: 10_000_000 }
     const tree = priceSessionTree(
       [
-        { usage: rootUsage, provider: 'deepseek', model: 'deepseek-flash' },
-        { usage: small, provider: 'deepseek', model: 'deepseek-flash', sessionId: 's-cheap', label: '研究员' },
-        { usage: large, provider: 'openai', model: 'gpt-9', sessionId: 's-dear', label: '审阅者' },
+        {
+          usage: { uncachedInputTokens: 1_000_000 },
+          provider: 'deepseek',
+          model: 'deepseek-flash',
+          sessionId: 's-cheap',
+          label: '研究员',
+        },
+        {
+          usage: { uncachedInputTokens: 10_000_000 },
+          provider: 'openai',
+          model: 'gpt-9',
+          sessionId: 's-dear',
+          label: '审阅者',
+        },
       ],
       twoRouteBook,
       at,
@@ -489,9 +483,7 @@ describe('priceSessionTree', () => {
   })
 
   it('caps the listed agents and reports the overflow', () => {
-    const sources: UsageSource[] = [
-      { usage: rootUsage, provider: 'deepseek', model: 'deepseek-flash' },
-    ]
+    const sources: UsageSource[] = []
     for (let index = 0; index < 20; index += 1) {
       sources.push({
         usage: { outputTokens: 1_000 + index },
@@ -511,35 +503,30 @@ describe('priceSessionTree', () => {
   it('skips a session it cannot route or price', () => {
     const tree = priceSessionTree(
       [
-        { usage: rootUsage, provider: 'deepseek', model: 'deepseek-flash' },
-        { usage: agentUsage, provider: undefined, model: undefined },
-        { usage: agentUsage, provider: 'openai', model: 'not-a-model' },
+        { usage: flashUsage, provider: 'deepseek', model: 'deepseek-flash' },
+        { usage: gptUsage, provider: undefined, model: undefined },
+        { usage: gptUsage, provider: 'openai', model: 'not-a-model' },
       ],
       twoRouteBook,
       at,
     )
     if (tree === null) throw new Error('expected a priced tree')
-    expect(tree.agents.count).toBe(0)
+    expect(tree.agents.count).toBe(1)
   })
 
   it('returns null when nothing at all could be priced', () => {
     expect(
-      priceSessionTree(
-        [{ usage: rootUsage, provider: undefined, model: undefined }],
-        twoRouteBook,
-        at,
-      ),
+      priceSessionTree([{ usage: flashUsage, provider: undefined, model: undefined }], twoRouteBook, at),
     ).toBeNull()
     expect(
       priceSessionTree(
-        [{ usage: rootUsage, provider: 'deepseek', model: 'deepseek-flash' }],
+        [{ usage: flashUsage, provider: 'deepseek', model: 'deepseek-flash' }],
         emptyBook(),
         at,
       ),
     ).toBeNull()
   })
 })
-
 describe('subtractBuckets', () => {
   it('reports what one run added to each bucket', () => {
     expect(
