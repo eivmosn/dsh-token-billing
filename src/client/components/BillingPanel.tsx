@@ -22,7 +22,6 @@ import {
   USAGE_URL,
   type AgentRollup,
   type PricedRow,
-  type UsageBuckets,
   type PriceResult,
 } from '../../billing.ts'
 import { MEASURE_STYLE } from '../constants.ts'
@@ -40,7 +39,7 @@ export interface AgentUsage extends AgentRollup {
   unreported: number
 }
 
-const BUCKET_LABEL: Partial<Record<keyof UsageBuckets, string>> = {
+const BUCKET_LABEL: Record<string, string | undefined> = {
   uncachedInputTokens: 'bucket.miss',
   cacheReadTokens: 'bucket.hit',
   cacheWriteTokens: 'bucket.write',

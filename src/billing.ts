@@ -242,7 +242,7 @@ export const BUCKETS: ReadonlyArray<{
 ]
 
 export interface PricedRow {
-  key: keyof UsageBuckets
+  key: string
   label: string
   tokens: number
 
@@ -365,7 +365,7 @@ export function priceSessionTree(
   book: PriceBook,
   at: Date,
 ): SessionTreePrice | null {
-  const totals = new Map<keyof UsageBuckets, PricedRow>()
+  const totals = new Map<string, PricedRow>()
   let totalCny = 0
   let totalTokens = 0
   let peak = false

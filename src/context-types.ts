@@ -108,6 +108,10 @@ export interface SessionSummary {
   projections?: SessionProjections
 }
 
+export interface TrajectorySnapshot {
+  eventNodes?: unknown
+}
+
 export interface SessionListState {
   byId?: Record<string, SessionSummary | undefined>
   projectionsBySession?: Record<string, ProjectionSnapshot | undefined>
@@ -127,6 +131,7 @@ export interface BillingChipProps {
   useSessionStatus: <T>(selector: (statuses: SessionStatusMap) => T) => T
 
   useSessions: <T>(selector: (state: SessionListState) => T) => T
+  useTrajectory: <T>(selector: (snapshot: TrajectorySnapshot) => T) => T
 
   sessionId?: string
 }

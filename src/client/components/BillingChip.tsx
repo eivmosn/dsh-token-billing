@@ -3,12 +3,21 @@ import * as react from 'react'
 import { createPortal } from 'react-dom'
 
 import {
+  attributeRequests,
+  attributedBuckets,
+  countTokens,
+  isDeepSeekRoute,
+  type AttributedGroup,
+} from '../../attribution.ts'
+import {
   formatBalance,
   formatCost,
   formatTokens,
   priceSessionTree,
   priceUsage,
+  USD_PER_CNY,
   subtractBuckets,
+  type PricedRow,
   type UsageBuckets,
 } from '../../billing.ts'
 import type { BillingChipProps, ModelSelection } from '../../context-types.ts'
@@ -16,6 +25,7 @@ import { MEASURE_STYLE, POSTURE_REFRESH_MS } from '../constants.ts'
 import { useCountUp } from '../hooks/use-count-up.ts'
 import { useOverlay } from '../hooks/use-overlay.ts'
 import { t } from '../locale.ts'
+import { billedRequestsOf } from '../trajectory.ts'
 import { collectChildUsage } from '../session-tree.ts'
 import { accountBalance } from '../stores/account-balance.ts'
 import { readTurnBaseline, writeTurnBaseline } from '../stores/turn-baseline.ts'
@@ -27,6 +37,7 @@ export function BillingChip({
   useProjection,
   useSessionStatus,
   useSessions,
+  useTrajectory,
   sessionId,
 }: BillingChipProps): react.ReactNode {
   const usage = useProjection<UsageBuckets | undefined>('tokenUsage')
@@ -86,20 +97,66 @@ export function BillingChip({
     if (open) void accountBalance.refresh()
   }, [open])
 
+  const trajectory = useTrajectory((snapshot: unknown) => snapshot)
+  const requests = react.useMemo(() => billedRequestsOf(trajectory), [trajectory])
+
+  const session = react.useMemo(
+    () => attributeRequests(requests, book.book),
+    [requests, book.book],
+  )
+
   const priced = react.useMemo(
     () => priceUsage(usage, book.book, provider, model, new Date(now)),
     [usage, book.book, provider, model, now],
   )
 
-  const sources = react.useMemo(
-    () => [{ usage, provider, model }, ...descendants.sources],
-    [usage, provider, model, descendants],
-  )
+  const sources = descendants.sources
 
   const tree = react.useMemo(
     () => priceSessionTree(sources, book.book, new Date(now)),
     [sources, book.book, now],
   )
+
+  const attributed = react.useMemo(() => {
+    if (session.groups.length === 0) return null
+
+    const covered = attributedBuckets(session)
+    const rest = usage === undefined ? {} : subtractBuckets(usage, covered)
+    const restTokens = countTokens(rest)
+    const restPriced =
+      restTokens > 0 ? priceUsage(rest, book.book, provider, model, new Date(now)) : null
+
+    const rows: PricedRow[] = session.groups.map((group: AttributedGroup) => {
+      const usd = group.cny * USD_PER_CNY
+      return {
+        key: `${group.providerId}:${group.modelId}:${group.peak ? 'peak' : 'off'}`,
+        label: isDeepSeekRoute(group.providerId)
+          ? `${t(group.peak ? 'attribution.peak' : 'attribution.off')} · ${group.modelName}`
+          : group.modelName,
+        tokens: group.tokens,
+        usd,
+        rate: group.tokens > 0 ? (usd * 1_000_000) / group.tokens : 0,
+      }
+    })
+
+    let totalCny = session.totalCny
+    let totalTokens = session.totalTokens
+
+    if (restPriced?.kind === 'ok') {
+      const usd = restPriced.totalCny * USD_PER_CNY
+      rows.push({
+        key: 'remainder',
+        label: t('attribution.remainder'),
+        tokens: restPriced.totalTokens,
+        usd,
+        rate: restPriced.totalTokens > 0 ? (usd * 1_000_000) / restPriced.totalTokens : 0,
+      })
+      totalCny += restPriced.totalCny
+      totalTokens += restPriced.totalTokens
+    }
+
+    return { rows, totalCny, totalTokens }
+  }, [session, usage, book.book, provider, model, now])
 
   const turnPriced = react.useMemo(
     () =>
@@ -114,9 +171,12 @@ export function BillingChip({
       ? { tokens: turnPriced.totalTokens, cny: turnPriced.totalCny }
       : undefined
 
-  const totalCny = priced.kind === 'ok' ? (tree?.totalCny ?? priced.totalCny) : 0
-  const totalTokens = priced.kind === 'ok' ? (tree?.totalTokens ?? priced.totalTokens) : 0
-  const rows = priced.kind === 'ok' ? (tree?.rows ?? priced.rows) : []
+  const rootCny = attributed?.totalCny ?? (priced.kind === 'ok' ? priced.totalCny : 0)
+  const rootTokens = attributed?.totalTokens ?? (priced.kind === 'ok' ? priced.totalTokens : 0)
+  const totalCny = rootCny + (priced.kind === 'ok' ? (tree?.totalCny ?? 0) : 0)
+  const totalTokens = rootTokens + (priced.kind === 'ok' ? (tree?.totalTokens ?? 0) : 0)
+  const rows =
+    priced.kind === 'ok' ? [...(attributed?.rows ?? priced.rows), ...(tree?.rows ?? [])] : []
   const agents =
     priced.kind === 'ok' && tree !== null
       ? { ...tree.agents, unreported: descendants.unreported }

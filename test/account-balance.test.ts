@@ -177,6 +177,7 @@ describe('the dock chip balance suffix', () => {
         useSessionStatus: (selector: (status: unknown) => unknown) =>
           selector(new Map([['s', { running: false }]])),
         useSessions: (selector: (state: unknown) => unknown) => selector({ byId: {} }),
+        useTrajectory: (selector: (snapshot: unknown) => unknown) => selector({ eventNodes: [] }),
       }),
     )
 
@@ -196,6 +197,7 @@ describe('the dock chip balance suffix', () => {
         useSessionStatus: (selector: (status: unknown) => unknown) =>
           selector(new Map([['s', { running: false }]])),
         useSessions: (selector: (state: unknown) => unknown) => selector({ byId: {} }),
+        useTrajectory: (selector: (snapshot: unknown) => unknown) => selector({ eventNodes: [] }),
       }),
     )
 

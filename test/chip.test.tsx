@@ -18,6 +18,7 @@ const render = (running: boolean): string =>
       useSessionStatus: (selector: (statuses: unknown) => unknown) =>
         selector(new Map([['session-1', { running }]])),
       useSessions: (selector: (state: unknown) => unknown) => selector({ byId: {} }),
+      useTrajectory: (selector: (snapshot: unknown) => unknown) => selector({ eventNodes: [] }),
       sessionId: 'session-1',
     }),
   )
@@ -52,6 +53,7 @@ describe('BillingChip', () => {
             ]),
           ),
         useSessions: (selector: (state: unknown) => unknown) => selector({ byId: {} }),
+      useTrajectory: (selector: (snapshot: unknown) => unknown) => selector({ eventNodes: [] }),
         sessionId: 'session-1',
       }),
     )
