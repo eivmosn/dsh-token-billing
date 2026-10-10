@@ -2,6 +2,8 @@ export const MODELS_DEV_URL = 'https://models.dev/api.json'
 
 export const BALANCE_ROUTE = '/plugins/dsh-token-billing/balance'
 
+export const USAGE_URL = 'https://platform.deepseek.com/usage'
+
 export const USD_PER_CNY = 0.15
 
 export const PEAK_FACTOR = 2

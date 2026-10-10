@@ -162,6 +162,41 @@ describe('BillingPanel', () => {
     expect(html).toContain('+¥5.00')
   })
 
+  it('links a resolved wallet to the platform usage page', () => {
+    const html = renderToStaticMarkup(
+      createElement(BillingPanel, {
+        priced: { kind: 'no-book' },
+        balance,
+        headline: '¥ —',
+        totalCny: 0,
+        panelRef: emptyRef,
+        style: {},
+      }),
+    )
+
+    expect(html).toContain('href="https://platform.deepseek.com/usage"')
+    expect(html).toContain('target="_blank"')
+    expect(html).toContain('rel="noreferrer"')
+    expect(html).toContain('data-token-billing-balance-link')
+  })
+
+  it('links nothing while the wallet is unresolved', () => {
+    for (const status of ['loading', 'no-key', 'error'] as const) {
+      const html = renderToStaticMarkup(
+        createElement(BillingPanel, {
+          priced: { kind: 'no-book' },
+          balance: { ...balance, status, wallets: [], bonusWallets: [] },
+          headline: '¥ —',
+          totalCny: 0,
+          panelRef: emptyRef,
+          style: {},
+        }),
+      )
+      expect(html).not.toContain('data-token-billing-balance-link')
+      expect(html).not.toContain('platform.deepseek.com')
+    }
+  })
+
   it('shows an unresolved wallet as unknown rather than as zero', () => {
     const states: BalanceState[] = [
       { ...balance, status: 'loading', wallets: [], bonusWallets: [] },

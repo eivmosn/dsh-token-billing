@@ -1,5 +1,7 @@
 import {
   IconDataOutlineRegular,
+  IconRightUpOutlineRegular,
+  Tooltip,
   useDismissOnOutsidePointer,
 } from '@deepseek-ai/dsh-client-ui-primitives'
 import {
@@ -18,6 +20,7 @@ import {
   formatCost,
   formatExactTokens,
   toCny,
+  USAGE_URL,
   type AgentRollup,
   type PricedRow,
   type PriceResult,
@@ -243,9 +246,25 @@ export function BillingPanel({
 
       <div className="tb-balanceRow" data-token-billing-balance>
         <span className="tb-balanceLabel">账户余额</span>
-        <span className="tb-balanceValue" data-token-billing-balance-value={balance.status}>
-          <BalanceValue state={balance} />
-        </span>
+        {balance.status === 'ready' ? (
+          <Tooltip label="点击查看" side="top" align="end" portal>
+            <a
+              className="tb-balanceValue tb-balanceLink"
+              href={USAGE_URL}
+              target="_blank"
+              rel="noreferrer"
+              data-token-billing-balance-value={balance.status}
+              data-token-billing-balance-link=""
+            >
+              <BalanceValue state={balance} />
+              <IconRightUpOutlineRegular size={12} className="tb-balanceLinkIcon" />
+            </a>
+          </Tooltip>
+        ) : (
+          <span className="tb-balanceValue" data-token-billing-balance-value={balance.status}>
+            <BalanceValue state={balance} />
+          </span>
+        )}
       </div>
     </div>
   )

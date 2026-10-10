@@ -468,6 +468,28 @@ button.tb-pill[aria-expanded="true"] {
   overflow-wrap: anywhere;
 }
 
+.tb-balanceLink {
+  color: inherit;
+  align-items: baseline;
+  gap: 4px;
+  text-decoration: none;
+  display: inline-flex;
+}
+
+.tb-balanceLinkIcon {
+  color: var(--dsw-alias-label-tertiary);
+  flex: none;
+  transition: color 0.18s ease;
+}
+
+.tb-balanceLink:hover {
+  text-decoration: underline;
+}
+
+.tb-balanceLink:hover .tb-balanceLinkIcon {
+  color: var(--dsw-alias-label-secondary);
+}
+
 .tb-granted {
   color: var(--dsw-alias-label-tertiary);
   margin-left: 6px;
@@ -571,7 +593,8 @@ button.tb-pill[aria-expanded="true"] {
   .tb-agentChevron,
   .tb-subagentItem,
   .tb-subagentLabel,
-  .tb-subagentMeta {
+  .tb-subagentMeta,
+  .tb-balanceLinkIcon {
     transition: none;
   }
 }
