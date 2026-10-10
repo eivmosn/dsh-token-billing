@@ -1,252 +1,54 @@
 # dsh-token-billing
 
-DeepSeek Harness 插件：在输入框底部的 composer dock 行末尾追加一个实时计费 chip，显示本会话的预估费用（¥）。悬停显示金额与计价依据，点击展开明细面板（各计费桶的 token 与金额、账户余额，单价另由一个按钮展开成独立卡片）。
+DeepSeek Harness 客户端插件：在输入框底部的 dock 行显示本会话的预估费用（¥），悬停看摘要，点击展开明细。
 
-费用是**估算**：DSH 本身没有计费概念，本插件把 Host 上报的精确 token 桶按 models.dev 公开挂牌价折算，不是账单。
+费用是**估算**。DSH 本身没有计费概念，本插件把 Host 上报的 token 用量按 models.dev 的公开挂牌价折算，不是账单。
 
-## 功能
+## 显示什么
 
-| 状态 | 显示 |
-| --- | --- |
-| 无用量 | 不渲染任何内容 |
-| 价格表未就绪 | `¥ —`（附一句说明与自动重试） |
-| 该模型无挂牌价 | `¥ ?` |
-| 正常 | `¥0.42`，超过 ¥5 转为红色 |
-| 会话运行中 | 金额后追加脉冲点与已运行秒数 |
+- **胶囊** —— `¥5.26 / ¥29.66`：本会话预估费用 / 账户余额。会话运行中追加脉冲点与已运行秒数。
+- **悬停卡片** —— 花费摘要：模型、四个计费桶、合计。
+- **明细面板** —— 按未缓存输入 / 缓存读取 / 缓存写入 / 输出拆分 token 与金额，末尾是账户余额。每百万 token 单价默认收起，点按钮展开成独立卡片，高峰 / 低谷自动切换。
+- **子智能体** —— 点 `子智能体` 一行，在面板左侧弹出卡片，逐个列出 agent 的花费。
 
-明细面板默认只显示计费桶与账户余额；「每百万 token 单价」默认收起，点按钮才展开成一张带点阵纹理的小卡片（含高峰/低谷说明与折算口径）。
+价格表来自 models.dev，按 24 小时缓存在 localStorage。账户余额由 Host 半边代理官方 `user/balance` 接口：API key 只存在 Host 凭据库里，浏览器读不到。
 
-账户余额走 Host 半边的 `/plugins/dsh-token-billing/balance` 路由：API key 存在 Host 凭据库里，浏览器永远读不到，因此由 Host 代为调用官方 `user/balance` 接口，只把数字交给浏览器。
+## 安装
 
-## 工程结构
+在 DSH 的「添加插件」里填仓库地址：
 
 ```
-src/
-  index.ts              Host 半边：注册受信任围栏保护的余额路由
-  billing.ts            纯计费域：价格表、成本模型、时段判断、金额格式化、两侧余额报文的校验
-  context-types.ts      本插件消费的 cordis 服务面的结构化镜像（纯类型）
-  css.d.ts              `import css from './x.css'` 的类型声明
-  client/
-    index.ts            浏览器半边入口：name / inject / apply
-    constants.ts        全部可调参数
-    billing.css         样式表（真 CSS 文件，构建期内联成注入 JS）
-    styles.ts           把上面的样式注入成一个带 data-plugin-css 的 <style>
-    stores/
-      account-balance.ts  共享的账户余额 store（Host 路由代理）
-      price-book.ts       共享的 models.dev 价格表 store
-    hooks/
-      use-count-up.ts     金额数字缓动
-      use-overlay.ts      触发器锚定的浮层位置 / Esc / 外部点击
-    components/
-      BillingChip.tsx     dock 上的 chip：pill、读数、两个 portal
-      BillingPanel.tsx    点击展开的明细面板
-      BillingHoverCard.tsx 悬停小卡片
-      UnitRatesCard.tsx   每百万 token 单价卡片（面板内可折叠）
-      BalanceValue.tsx    账户余额数值渲染
-test/
-  billing.test.ts       纯计费域
-  host.test.ts          信任围栏与路由状态阶梯
-  panel.test.tsx        面板 / 悬停卡片 / 单价卡片各状态（直接渲染组件）
-  bundle.test.ts        构建产物：ModuleLoader 契约、外部依赖、CSS 内联、slot 注册、SSR 冒烟渲染
-  stubs/                vitest 用的 primitives 替身
-preview/
-  render.spec.tsx       把各状态渲染成一张预览页（明/暗两套真实 token 值）
-  shot.sh               预览页 + 无头 Chrome 截图
+https://github.com/eivmosn/dsh-token-billing
 ```
 
-产物（`pnpm build`，均不入库）：
+或命令行：
 
+```bash
+dsh plugin add github:eivmosn/dsh-token-billing
 ```
-lib/index.js        Host 半边，ESM，无任何运行时 import
-lib/index.d.ts      上面这半的类型
-lib/client.js       浏览器半边，ModuleLoader 闭包工厂
-lib/client.js.map
-```
+
+仓库已带构建好的 `lib/`，所以安装不需要编译、不需要放行构建脚本、也不会装 devDependencies。
+
+## 费用是怎么算的
+
+每个会话按**它自己的**模型路由计价：
+
+- 子智能体 / teammate 是**独立会话**，父会话的用量不包含它们 —— 沿 `parentId` 走完整棵后代树，逐个按各自路由计价再相加。还没上报用量的会话标为「未上报」，不静默丢弃。
+- **已知误差**：同一会话中途换过模型时，全部 token 按最后的路由计价；峰谷按渲染当下判定，上限 2×。消除这两项需要在 Host 侧注册投影做逐请求归因，本插件没做。
 
 ## 开发
 
 ```bash
 pnpm install
-pnpm build        # tsdown 打包两侧
-pnpm dev          # tsdown --watch
-pnpm typecheck    # tsc --noEmit
-pnpm lint         # oxlint
-pnpm lint:fix
-pnpm test         # vitest run（需先 build，bundle 测试读 lib/）
-pnpm preview      # 渲染预览页并截图到 preview/panel.png（明/暗两套）
-pnpm check        # typecheck → lint → build → test
+pnpm dev      # tsdown --watch
+pnpm check    # typecheck → oxlint → build → test
+pnpm preview  # 渲染明/暗预览页并截图
 ```
 
-## 视觉
+TypeScript + tsdown + oxlint + vitest。Host 半边是不含任何运行时 import 的 ESM；client 半边是浏览器 CJS 闭包工厂；样式写在真实 `.css` 文件里，构建期内联进 bundle。
 
-样式只引用 `--dsw-alias-*` / `--dsw-*` 主题 token，明暗主题自动跟随；动效在 `prefers-reduced-motion` 下关闭。
+改了 `src/` 请跑一次 `pnpm check` 再提交 —— 它内含构建，会刷新被跟踪的 `lib/`。
 
-- **点阵背景**：`radial-gradient(dot 1px, transparent 1.5px)` + `background-size` 铺成网格，再用 `mask-image` 做渐隐，只落在面板/卡片上，chip 本体保持干净。
-- **分层表面**：面板是「顶部微高光渐变 + 菜单底色 + 顶边 1px 渐隐亮线」，配 `--dsw-elevation-prominent` 的描边阴影；标题下的分隔线也是渐隐的。
-- **连续圆角**：`corner-shape: superellipse(1.25)`（`@supports` 内，不支持则退回普通圆角）。
-- **折叠动效**：用 `grid-template-rows: 0fr → 1fr` 做无需魔法数字的高度动画；收起时同时 `visibility: hidden`，所以收起状态对读屏与 Tab 序也是隐藏的。
-- 颜色深浅用 `color-mix(in srgb, var(--dsw-alias-label-primary) N%, transparent)`，不引入任何写死的色值。
+## License
 
-技术栈：**TypeScript**（逻辑 `.ts`、UI `.tsx`，无 JS 源文件）、**tsdown**（rolldown）+ 类型声明生成、**oxlint**、**vitest**。
-
-## 构建契约
-
-两个半边没有任何共同点，只有一个名字，所以 `tsdown.config.ts` 是两个独立配置：
-
-- `lib/index.js` 是给 Node 的普通 ESM，由 DSH loader 加载。它**不 import 任何东西**——包括 `@deepseek-ai/*`：这些包由 DSH loader 自己的模块图提供，从 profile 里安装的插件中 `require` 会直接 `MODULE_NOT_FOUND`。所以 Host 半边消费的服务面（`credentials` / `webServer` / `webRuntime`）在 `context-types.ts` 里以结构化镜像声明，一眼能读完。
-
-- `lib/client.js` 是浏览器半边。浏览器模块系统不加载 ESM，而是按包注册一个 CommonJS 工厂：
-
-  ```js
-  window.__ModuleLoader__.load({ id: 'dsh-token-billing', factory: (require) => { /* … */ } })
-  ```
-
-  因此产物以 CJS 产出，并把 `react`、`react/jsx-runtime`、`react-dom`、`@deepseek-ai/dsh-client-ui-primitives` 保持为外部 `require`——这四个是 shell 预置进冻结模块表的平台模块（即 `dsh.client.external` 意义上的基线），`tsdown.config.ts` 的 `CLIENT_PLATFORM_MODULES` 与它们一一对应，其余 import 一律内联。工厂外壳由 `outputOptions` 的 `banner` / `intro` / `footer` 拼出。
-
-  一个模块表回答不了的 `require` 必然在工厂实例化时抛错，所以 `test/bundle.test.ts` 会执行 `lib/client.js` 并断言它只请求这四个 specifier。
-
-## 样式为什么要过构建期
-
-浏览器模块表只执行 JS，CSS 不会作为模块被加载——DSH 自己发布的所有 client bundle 里没有任何 `require("*.css")`，样式一律以 JS 形式注入 `<style>`。
-
-但源码层面可以直接 import CSS 文件。`tsdown.config.ts` 里的 `cssTextPlugin` 把 `*.css` 解析成一个虚拟模块，把文件内容作为字符串 default 导出（虚拟 id 刻意不以 `.css` 结尾，避开 tsdown 自己的 CSS 管线）。于是：
-
-```ts
-import css from './billing.css'   // src/client/styles.ts
-tag.textContent = css
-```
-
-好处是样式写在真正的 `.css` 文件里（编辑器高亮 / lint / 格式化），产物里依旧不会有 CSS 模块请求。官方 `packages/client/tsdown.client.ts` 走的是同一条思路，只是多了 lightningcss（CSS Modules 哈希类名、压缩）与 Tailwind；这里不需要，所以没引依赖。
-
-样式注入本身挂在 `apply` 的 `ctx.effect` 上并返回清理函数，符合官方 `references/ui-plugin.md` 对资源注册的要求。
-
-## 分发
-
-`dsh plugin <参数>` 只是把参数透传给 profile 目录里的 pnpm（DSH 源码原话：*all other arguments remain pnpm's responsibility*），所以**任何 pnpm 认的 spec 都能装**。DSH 自己预解析 spec 的实现在 `@deepseek-ai/dsh-plugin-manager` 的 `install-spec.js`，它只接受四种形式：
-
-| 形式 | 例子 | 用户机器要编译吗 |
-| --- | --- | --- |
-| 注册表包名 | `dsh-token-billing` | 否，包里带 `lib/` |
-| 仓库地址 | `github:you/dsh-token-billing` · `https://github.com/you/dsh-token-billing` | **要**，见下 |
-| tarball | `./dsh-token-billing-0.2.1.tgz` · `https://…/dsh-token-billing-0.2.1.tgz` | 否，包里带 `lib/` |
-| 本地绝对路径 | `file:/abs/path` · `link:/abs/path` | 否，但只适合开发 |
-
-`files` 字段是 `["lib", "cordis.patch.yml", "README.md"]`，`prepare` 是 `tsdown` —— 所以 `pnpm pack` / `npm publish` 产出的包里**已经含构建产物**（实测 45 KB），装它不触发任何编译。
-
-### 走仓库地址（不发包）
-
-可以，但 pnpm 的构建脚本默认被拦：git 依赖要靠 `prepare` 才会生成 `lib/`，而 pnpm 会先阻断它。DSH 的 CLI 会直接把这个提示打出来：
-
-```
-dsh: git-hosted plugins build on install via their prepare script, which pnpm
-blocks until allowed — add the exact key pnpm printed above under allowBuilds
-in <profile>/pnpm-workspace.yaml, then re-run
-```
-
-把 pnpm 打印的那个 key 加到 `~/.dsh/profiles/<profile>/pnpm-workspace.yaml` 的 `allowBuilds` 下再重跑即可（本机 profile 里已有一个这样的实例，来自社区插件 `dsh-tool-plus`）。代价是用户要装一遍 devDependencies（typescript / tsdown 等）并本机编译。
-
-### 推荐：Release 挂 tarball
-
-避开注册表、又避开编译的办法是把 `pnpm pack` 的产物挂到 GitHub Release：
-
-```bash
-pnpm pack                       # 产出 dsh-token-billing-<version>.tgz
-dsh plugin add https://github.com/you/dsh-token-billing/releases/download/v0.2.1/dsh-token-billing-0.2.1.tgz
-```
-
-tarball 里已是构建产物，所以不触发 `prepare`、不需要 `allowBuilds`、也不需要 npm 账号。
-
-### 发到 npm
-
-```bash
-npm publish --access public
-```
-
-`prepare` 会在 publish 前自动跑一遍 `tsdown`，`files` 决定只带 `lib/`、`cordis.patch.yml`、`README.md`。名字 `dsh-token-billing` 在 npm 上未被占用（2026-10 实测 404）。
-
-### 兼容性是怎么被检查的
-
-安装时真正强制的只有一条（`@deepseek-ai/dsh-app-boot` 的 `evaluatePluginCompatibility`）：**peerDependencies 里名字为 `@deepseek-ai/dsh` 或以 `@deepseek-ai/dsh-` 开头的项，会被拿去和 DSH 运行时版本比对**，不满足就整包拒绝安装，用户必须 `dsh plugin allow-version` 显式接受风险。其余 peer（`react`、`@deepseek-ai/cordis`）不参与检查。
-
-所以 `@deepseek-ai/dsh-client-ui-primitives` 声明成开放区间 `>=0.2.0-rc.2`（与已发布的 `dsh-context` 同样取向）而不是封顶区间：封顶写法在运行时升到 `0.3.0` 正式版时会让插件被直接拒绝安装。
-
-`dsh.manifestVersion` 与 `engines.dsh` 都只是**声明性**的，规范明说 *current installers and loaders do not enforce* —— 留着是为了表达意图，不构成约束。
-
-## 安装到 DSH profile
-
-开发时用本地 link，改完立刻生效、无需重装：
-
-```bash
-pnpm build
-# 然后在插件管理器里安装本目录，或直接把 profile 的依赖指向本目录：
-#   "dsh-token-billing": "link:/abs/path/to/dsh-token-billing"
-```
-
-`cordis.patch.yml` 按包名引用插件；`package.json` 的 `dsh.client` 声明让 web 端额外加载 `lib/client.js` 作为浏览器半边。
-
-## 与旧版单文件实现的差异
-
-行为保持一致：三个可达渲染状态（无用量 / 价格表未就绪 / 运行中）的 SSR 产物与改造前**逐字节相同**，DOM 契约（`tb-*` 类名、`data-token-billing*` 属性、`order:9999` 定位）逐个对齐。结构上做了：
-
-- **模块化**：原先的单文件拆成 `src/client/` 下的入口、两个 store、两个 hook、四个组件，加根部的纯计费域与 Host 半边。
-- **JSX**：UI 用 `.tsx` + JSX，与官方客户端构建链一致（因此多一个基线外部依赖 `react/jsx-runtime`）。
-- **真 CSS 文件**：样式从 TS 字符串数组变成 `src/client/billing.css`，由构建期转成注入 JS。
-- **类型**：两侧全覆盖 TS，Host 半边产出 `.d.ts`；`react` / `react-dom` / primitives 用真实类型，Host 服务面用结构化镜像。
-- **可测试**：原先埋在 1400 行里的纯逻辑（价格表构建、成本模型、时段判断、金额格式化、上下游报文校验）抽到 `billing.ts`，两侧共用并有直接测试；面板与悬停卡片另按组件直接测。
-- **清理**：删掉从未被读到的 `MIN_DISPLAY` 与 `formatTokens`；`priceBook` 的 `dispose()` 现在真的挂在 teardown 上（停止重试链，并允许重新激活时重新拉取）；删掉了源码里全部注释。
-- **两处修正**：上游响应体大小限制原先按字符数比较却叫 `MAX_BODY_BYTES`，改为按 UTF-8 字节数；余额读取里 `status === 403 ? 'error' : 'error'` 的冗余三元去掉。
-- **一处简化**：`react-dom` 与 primitives 的成员改为静态 import。旧代码用 `try/catch` 包裹 `require('react-dom')` 以防缺失，但这两个 specifier 由 shell 冻结模块表保证，静态 import 让整条降级分支成为死代码。
-
-## 成本模型
-
-**DSH 内核没有任何成本概念**，也从不引用 models.dev；唯一的 token 数据源是 `dsh-token-meter` 注册的 `tokenUsage` 投影 —— **每个 session 一份、扁平四桶**（`uncachedInputTokens` / `cacheReadTokens` / `cacheWriteTokens` / `outputTokens`），既不带模型维度，也不跨会话聚合。所以价格表必须完全由本插件自带。
-
-### 怎么算
-
-1. 当前会话 `tokenUsage` 取四桶，`modelSelection` 取它自己的路由；
-2. 子智能体 / teammate 是**独立的 session**（`childSessionMeta` 把 `parentSession` 写进子会话 header），父会话的 `tokenUsage` **不包含**它们 —— 所以沿 `byId[].parentId` 走完整棵后代树，逐个取出各自的 `tokenUsage` 与 `modelSelection`。字段形状已对权威来源核实：roster 行的构造在 `@deepseek-ai/dsh-api-session-controller/lib/types/client/sessions/service.js`，`parentId` 是 wire 上 `parentSessionId` 的映射，`projectionValues` 逐行携带；
-3. 每个 session 按**它自己的路由**计价，再求和；还没上报用量的后代会计数并在面板里标为「未上报」，不静默丢弃；
-4. 明细按金额降序列出花费最高的 12 个 agent，超出部分只报数量。
-
-### 已知误差
-
-| 来源 | 影响 | 现状 |
-| --- | --- | --- |
-| 漏算子智能体 | 可达数倍到数十倍（低估） | **已修**：整棵树按各自路由计价 |
-| 子智能体用了别的模型 | 按主会话单价算是错的 | **已修**：按各自 `modelSelection` 计价 |
-| 同一会话中途换模型 | 该会话全部 token 按最后的路由算 | 未修 |
-| 峰谷时段 | 整段按渲染当下的时段算，上限 2× | 未修 |
-
-后两项需要**逐请求归因**：`dsh-context` 的做法是在 Host 侧注册自己的 session projection（`ctx.sessionProjections.register({key, stateVersion, stateSchema, init, apply, wire})`），把事件流增量折叠成 `provider → model → period` 三层记录，峰谷取 `step/start` 那个瞬间而非渲染时刻。本插件没走这条路 —— 它会引入 zod 依赖（本插件目前**零运行时依赖**），且要耦合逐事件类型契约；代价与收益在 README 之外单独评估。
-
-### 性能
-
-对着真实注册表（226 provider / 7998 模型）实测：
-
-| 项 | 改前 | 改后 |
-| --- | --- | --- |
-| `resolveRate` 最坏情况（价格表里没有该路由） | 224.7 µs | **0.057 µs**（≈3900×，且不再随注册表规模变化） |
-| `isPeak`（每次调用都新建 `Intl.DateTimeFormat`） | 26.9 µs | **1.0 µs**（26×） |
-| `priceUsage`（单会话计价） | 34.8 µs | **3.6 µs**（9.6×） |
-| `priceSessionTree`（4 个会话） | 120 µs | **15.0 µs**（8×） |
-
-`isPeak` 是整条链路最大的单点：它每次调用都 `new Intl.DateTimeFormat(...)`，而一个会话树要按会话数调用它 —— 占总耗时 77%。提到模块级常量后，每次计价从 34.8 µs 降到 3.6 µs。
-
-首次加载的真实开销（实测）：
-
-- 载荷 5 375 263 字节未压缩 / **538 757 字节 gzip**（浏览器一定带 `Accept-Encoding`），响应头是 `cache-control: max-age=0, must-revalidate`，所以 HTTP 缓存帮不上忙；
-- `JSON.parse` 19.3 ms + 建表（含两个索引）9.5 ms；
-- 构建后的价格表 **772 KB**，按 24 小时 TTL 存 localStorage：24 小时内再次打开跳过下载与建表，只剩 ≈5 ms 解析 + ≈6 ms 重建索引。
-
-**没有优化的两处（实测后决定不值得）**：`collectChildUsage` 是 O(会话数) 的线性扫描，但 200 个会话时才 15.8 µs、1000 个也才 95 µs，且被 `useMemo` 按 roster 引用缓存，不是每次渲染都跑；运行中每秒一次的 elapsed 计时节流同理（一次 chip 渲染在微秒量级）。两者都不值得引入额外复杂度。
-
-`buildBook` 额外产出两个小写索引（provider → 真实拼写、model → 首个命中位置），把原先的线性扫描降为常数查找；实测真实注册表 226 个 provider id 无大小写冲突，索引与线性扫描语义等价（测试覆盖「首个命中优先」的次序）。构建后的价格表按 24 小时 TTL 存 localStorage，过期时先用旧表出数、后台再拉。
-
-## UI 迭代
-
-hover 卡片与明细面板按「点阵 + 分层表面 + 连续圆角」重做；chip 本体未动（它要留在 dock 行的 flow 里）。
-
-- 单价从「面板里第四段常驻内容」改成**默认收起**的独立卡片 —— 原先四个桶在明细和单价里各出现一次，信息重复。
-- 原先的 `.tb-section` / `.tb-group` 两个 class 随旧结构一起删除。
-- 曾试过一版「按金额占比的堆叠条」，但真实数据下比例极端（92M 未缓存 vs 8.4M 输出），视觉上读作一条杂线而非图表，故撤掉。
-- `pnpm preview` 会把各状态渲染成一张明/暗对照页并截图，用于在没有真实页面的情况下比对改动。
+MIT
