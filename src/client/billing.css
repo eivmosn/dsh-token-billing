@@ -85,36 +85,28 @@ button.tb-pill[aria-expanded="true"] {
   cursor: default;
   font-size: 12px;
   line-height: 18px;
-  --tb-dot-alpha: 0.58;
-  --tb-dot-fade: linear-gradient(180deg, #000 0, rgb(0 0 0 / 40%) 30px, transparent 64px);
+  --tb-wash-fade: linear-gradient(180deg, #000 0, rgb(0 0 0 / 35%) 34px, transparent 78px);
 }
 
 .tb-panel::before,
-.tb-hover::before,
-.tb-rateCard::before {
-  --tb-dot-1: color-mix(in srgb, var(--dsw-static-red-400) 72%, var(--dsw-static-blue-100));
-  --tb-dot-2: var(--dsw-static-red-500);
-  --tb-dot-3: var(--dsw-static-amber-500);
-  --tb-dot-4: var(--dsw-static-green-500);
-  --tb-dot-5: var(--dsw-static-blue-500);
-  --tb-dot-6: var(--dsw-static-deepseek-400);
+.tb-hover::before {
   content: "";
   position: absolute;
   inset: 0;
   z-index: -1;
   pointer-events: none;
   border-radius: inherit;
-  background-image:
-    radial-gradient(circle at 6px 19px, var(--tb-dot-1) 0.8px, transparent 1.4px),
-    radial-gradient(circle at 23px 7px, var(--tb-dot-2) 0.8px, transparent 1.4px),
-    radial-gradient(circle at 13px 12px, var(--tb-dot-3) 0.8px, transparent 1.4px),
-    radial-gradient(circle at 27px 30px, var(--tb-dot-4) 0.8px, transparent 1.4px),
-    radial-gradient(circle at 8px 25px, var(--tb-dot-5) 0.8px, transparent 1.4px),
-    radial-gradient(circle at 31px 5px, var(--tb-dot-6) 0.8px, transparent 1.4px);
-  background-size: 27px 26px, 31px 28px, 33px 29px, 35px 37px, 37px 34px, 41px 38px;
-  opacity: var(--tb-dot-alpha, 0.5);
-  -webkit-mask-image: var(--tb-dot-fade, none);
-  mask-image: var(--tb-dot-fade, none);
+  background-image: linear-gradient(
+    104deg,
+    color-mix(in srgb, var(--dsw-static-deepseek-400) 30%, transparent) 0%,
+    color-mix(in srgb, var(--dsw-static-blue-500) 26%, transparent) 20%,
+    color-mix(in srgb, var(--dsw-static-green-500) 24%, transparent) 40%,
+    color-mix(in srgb, var(--dsw-static-amber-400) 28%, transparent) 62%,
+    color-mix(in srgb, var(--dsw-static-red-400) 30%, transparent) 82%,
+    color-mix(in srgb, var(--dsw-static-red-500) 24%, transparent) 100%
+  );
+  -webkit-mask-image: var(--tb-wash-fade, none);
+  mask-image: var(--tb-wash-fade, none);
 }
 
 .tb-title {
@@ -326,8 +318,6 @@ button.tb-pill[aria-expanded="true"] {
   border-radius: var(--dsw-radius-md);
   background-color: color-mix(in srgb, var(--dsw-alias-label-primary) 2%, transparent);
   box-shadow: inset 0 0 0 1px var(--dsw-alias-border-l1);
-  --tb-dot-alpha: 0.34;
-  --tb-dot-fade: linear-gradient(180deg, #000 0, transparent 34px);
 }
 
 .tb-note {
@@ -502,8 +492,7 @@ button.tb-pill[aria-expanded="true"] {
   font-size: 12px;
   line-height: 18px;
   white-space: nowrap;
-  --tb-dot-alpha: 0.5;
-  --tb-dot-fade: linear-gradient(180deg, #000 0, rgb(0 0 0 / 40%) 14px, transparent 38px);
+  --tb-wash-fade: linear-gradient(180deg, #000 0, rgb(0 0 0 / 35%) 16px, transparent 46px);
 }
 
 .tb-hoverAmount {
