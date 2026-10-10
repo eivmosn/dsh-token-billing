@@ -6,6 +6,10 @@ import { buildBook, priceUsage, type PriceResult } from '../src/billing.ts'
 import type { BalanceState } from '../src/client/stores/account-balance.ts'
 import { BillingHoverCard } from '../src/client/components/BillingHoverCard.tsx'
 import { BillingPanel, type AgentUsage } from '../src/client/components/BillingPanel.tsx'
+import {
+  SubagentCard,
+  subagentCardPosition,
+} from '../src/client/components/SubagentCard.tsx'
 import { UnitRatesCard } from '../src/client/components/UnitRatesCard.tsx'
 
 const OFF_PEAK = new Date('2026-10-12T12:00:00Z')
@@ -177,6 +181,71 @@ describe('BillingPanel', () => {
       )
       expect(html).not.toContain('¥0.00')
     }
+  })
+})
+
+describe('BillingPanel subagents', () => {
+  it('offers the subagent spend only once it is asked for', () => {
+    const html = panel(priced, { agents, totalCny: 5 })
+
+    expect(html).toContain('data-token-billing-agents-toggle')
+    expect(html).toContain('aria-expanded="false"')
+    expect(html).toContain('子智能体')
+    expect(html).not.toContain('梳理计费口径')
+  })
+
+  it('leaves the row inert when no descendant reported usage', () => {
+    const silent: AgentUsage = { ...agents, count: 3, cny: 0, items: [], overflow: 0 }
+    const html = panel(priced, { agents: silent })
+
+    expect(html).not.toContain('data-token-billing-agents-toggle')
+    expect(html).toContain('data-token-billing-agents="3"')
+    expect(html).toContain('3 个 · ¥0.0')
+  })
+})
+
+describe('SubagentCard', () => {
+  it('lists each subagent with its spend, model and tokens', () => {
+    const html = renderToStaticMarkup(
+      createElement(SubagentCard, { agents, cardRef: emptyRef, style: {} }),
+    )
+
+    expect(html).toContain('data-token-billing-subagents')
+    expect(html).toContain('梳理计费口径')
+    expect(html).toContain('¥0.510')
+    expect(html).toContain('DeepSeek V4 Flash · 268,000 token')
+    expect(html).toContain('¥0.217')
+    expect(html).not.toContain('另有')
+  })
+
+  it('counts the subagents that did not fit the card', () => {
+    const html = renderToStaticMarkup(
+      createElement(SubagentCard, {
+        agents: { ...agents, count: 20, overflow: 18 },
+        cardRef: emptyRef,
+        style: {},
+      }),
+    )
+    expect(html).toContain('另有 18 个')
+  })
+})
+
+describe('subagentCardPosition', () => {
+  const card = { width: 232, height: 200 }
+  const viewport = { width: 1200, height: 800 }
+
+  it('tucks the card against the panel with the panel gap', () => {
+    expect(subagentCardPosition({ left: 600, top: 300 }, card, viewport)).toEqual({
+      left: 360,
+      top: 300,
+    })
+  })
+
+  it('clamps the card inside the viewport margin on both edges', () => {
+    expect(subagentCardPosition({ left: 40, top: 700 }, card, viewport)).toEqual({
+      left: 12,
+      top: 588,
+    })
   })
 })
 

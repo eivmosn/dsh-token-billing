@@ -1,5 +1,18 @@
-import { IconDataOutlineRegular } from '@deepseek-ai/dsh-client-ui-primitives'
-import { useId, useState, type CSSProperties, type ReactNode } from 'react'
+import {
+  IconDataOutlineRegular,
+  useDismissOnOutsidePointer,
+} from '@deepseek-ai/dsh-client-ui-primitives'
+import {
+  useCallback,
+  useEffect,
+  useId,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type CSSProperties,
+  type ReactNode,
+} from 'react'
+import { createPortal } from 'react-dom'
 
 import {
   formatCost,
@@ -9,10 +22,14 @@ import {
   type PricedRow,
   type PriceResult,
 } from '../../billing.ts'
+import { MEASURE_STYLE } from '../constants.ts'
 import type { PanelRef } from '../hooks/use-overlay.ts'
 import type { BalanceState } from '../stores/account-balance.ts'
 import { BalanceValue } from './BalanceValue.tsx'
+import { SubagentCard, subagentCardPosition } from './SubagentCard.tsx'
 import { UnitRatesCard } from './UnitRatesCard.tsx'
+
+const useBrowserLayoutEffect = typeof document === 'undefined' ? useEffect : useLayoutEffect
 
 export interface AgentUsage extends AgentRollup {
   unreported: number
@@ -31,10 +48,10 @@ export interface BillingPanelProps {
   agents?: AgentUsage
 }
 
-function Chevron(): ReactNode {
+function Chevron({ className = 'tb-rateToggleChevron' }: { className?: string }): ReactNode {
   return (
     <svg
-      className="tb-rateToggleChevron"
+      className={className}
       width="12"
       height="12"
       viewBox="0 0 12 12"
@@ -65,6 +82,53 @@ export function BillingPanel({
 
   const [ratesOpen, setRatesOpen] = useState(defaultRatesOpen)
   const ratesId = useId()
+
+  const [agentsOpen, setAgentsOpen] = useState(false)
+  const [agentsPos, setAgentsPos] = useState<CSSProperties | null>(null)
+  const agentTriggerRef = useRef<HTMLButtonElement | null>(null)
+  const agentCardRef = useRef<HTMLDivElement | null>(null)
+
+  const agentListable = agents !== undefined && agents.count > 0 && agents.items.length > 0
+
+  const setAgentsVisible = useCallback((open: boolean) => {
+    setAgentsOpen(open)
+    if (!open) setAgentsPos(null)
+  }, [])
+
+  useDismissOnOutsidePointer(agentTriggerRef, agentsOpen, setAgentsVisible, agentCardRef)
+
+  useBrowserLayoutEffect(() => {
+    if (!agentsOpen) return undefined
+
+    const place = (): void => {
+      const panel = panelRef.current
+      const card = agentCardRef.current
+      if (panel === null || card === null) return
+      setAgentsPos(
+        subagentCardPosition(panel.getBoundingClientRect(), card.getBoundingClientRect(), {
+          width: window.innerWidth,
+          height: window.innerHeight,
+        }),
+      )
+    }
+
+    place()
+    window.addEventListener('resize', place)
+    document.addEventListener('scroll', place, true)
+    return () => {
+      window.removeEventListener('resize', place)
+      document.removeEventListener('scroll', place, true)
+    }
+  }, [agentsOpen, panelRef])
+
+  useEffect(() => {
+    if (!agentsOpen) return undefined
+    const onKeyDown = (event: KeyboardEvent): void => {
+      if (event.key === 'Escape') setAgentsVisible(false)
+    }
+    document.addEventListener('keydown', onKeyDown)
+    return () => document.removeEventListener('keydown', onKeyDown)
+  }, [agentsOpen, setAgentsVisible])
 
   return (
     <div
@@ -107,8 +171,27 @@ export function BillingPanel({
               <dd>{formatExactTokens(detailTokens)}</dd>
             </div>
             {agents !== undefined && agents.count > 0 && (
-              <div className="tb-row">
-                <dt>子智能体</dt>
+              <div
+                className="tb-row tb-agentRow"
+                data-open={agentListable && agentsOpen ? 'true' : undefined}
+              >
+                <dt>
+                  {agentListable ? (
+                    <button
+                      ref={agentTriggerRef}
+                      type="button"
+                      className="tb-agentTrigger"
+                      aria-expanded={agentsOpen}
+                      data-token-billing-agents-toggle
+                      onClick={() => setAgentsVisible(!agentsOpen)}
+                    >
+                      子智能体
+                      <Chevron className="tb-agentChevron" />
+                    </button>
+                  ) : (
+                    '子智能体'
+                  )}
+                </dt>
                 <dd data-token-billing-agents={agents.count}>
                   {agents.unreported > 0
                     ? `${agents.count} 个 · ${formatCost(agents.cny)} · ${agents.unreported} 个未上报`
@@ -117,6 +200,17 @@ export function BillingPanel({
               </div>
             )}
           </dl>
+
+          {agentListable &&
+            agentsOpen &&
+            createPortal(
+              <SubagentCard
+                agents={agents}
+                cardRef={agentCardRef}
+                style={agentsPos ?? MEASURE_STYLE}
+              />,
+              document.body,
+            )}
 
           <button
             type="button"

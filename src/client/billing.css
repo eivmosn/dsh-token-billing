@@ -196,6 +196,55 @@ button.tb-pill[aria-expanded="true"] {
   color: var(--dsw-alias-label-primary);
 }
 
+.tb-agentRow {
+  position: relative;
+}
+
+.tb-agentRow[data-open="true"] {
+  background-color: color-mix(in srgb, var(--dsw-alias-label-primary) 4%, transparent);
+}
+
+.tb-agentTrigger {
+  appearance: none;
+  align-items: center;
+  gap: 4px;
+  max-width: 100%;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: 0 0;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  display: inline-flex;
+}
+
+.tb-agentTrigger::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 6px;
+}
+
+.tb-agentTrigger:focus-visible {
+  outline: none;
+}
+
+.tb-agentTrigger:focus-visible::after {
+  outline: 2px solid var(--dsw-alias-brand-primary);
+  outline-offset: 1px;
+}
+
+.tb-agentChevron {
+  flex: none;
+  transition: transform 0.24s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.tb-agentTrigger[aria-expanded="true"] .tb-agentChevron {
+  transform: rotate(90deg);
+}
+
 .tb-rateToggle {
   appearance: none;
   display: flex;
@@ -285,6 +334,72 @@ button.tb-pill[aria-expanded="true"] {
   color: var(--dsw-alias-label-tertiary);
   margin-top: 10px;
   overflow-wrap: anywhere;
+}
+
+.tb-subagents {
+  z-index: 1100;
+  box-sizing: border-box;
+  position: fixed;
+  width: 232px;
+  padding: 12px;
+  border-radius: var(--dsw-radius-md);
+  background-color: var(--dsw-alias-bg-layer-1);
+  -webkit-backdrop-filter: var(--dsw-menu-backdrop-filter);
+  backdrop-filter: var(--dsw-menu-backdrop-filter);
+  --dsw-elevation-stroke-color: var(--dsw-alias-border-l1);
+  box-shadow: var(--dsw-elevation-prominent);
+  color: var(--dsw-alias-label-secondary);
+  cursor: default;
+  font-size: 12px;
+  line-height: 18px;
+}
+
+.tb-subagentTitle {
+  color: var(--dsw-alias-label-primary);
+  margin-bottom: 10px;
+  font-weight: 500;
+}
+
+.tb-subagentList {
+  flex-direction: column;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+}
+
+.tb-subagentLine {
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+  display: flex;
+}
+
+.tb-subagentLabel {
+  color: var(--dsw-alias-label-secondary);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.tb-subagentCost {
+  color: var(--dsw-alias-label-primary);
+  font-variant-numeric: tabular-nums;
+  flex: none;
+}
+
+.tb-subagentMeta {
+  color: var(--dsw-alias-label-tertiary);
+  margin-top: 1px;
+  font-size: 11px;
+  overflow-wrap: anywhere;
+}
+
+.tb-subagentMore {
+  color: var(--dsw-alias-label-tertiary);
+  font-size: 11px;
 }
 
 .tb-rateSource {
@@ -389,7 +504,8 @@ button.tb-pill[aria-expanded="true"] {
 @supports (corner-shape: superellipse(1.25)) {
   .tb-panel,
   .tb-hover,
-  .tb-rateCard {
+  .tb-rateCard,
+  .tb-subagents {
     corner-shape: superellipse(1.25);
   }
 }
@@ -405,7 +521,8 @@ button.tb-pill[aria-expanded="true"] {
   .tb-rateRevealInner,
   .tb-row,
   .tb-details dt,
-  .tb-details dd {
+  .tb-details dd,
+  .tb-agentChevron {
     transition: none;
   }
 }

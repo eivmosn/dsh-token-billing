@@ -6,6 +6,7 @@ import { it } from 'vitest'
 import { buildBook, priceUsage, type PriceResult } from '../src/billing.ts'
 import { BillingHoverCard } from '../src/client/components/BillingHoverCard.tsx'
 import { BillingPanel, type AgentUsage } from '../src/client/components/BillingPanel.tsx'
+import { SubagentCard } from '../src/client/components/SubagentCard.tsx'
 import type { BalanceState } from '../src/client/stores/account-balance.ts'
 
 const OFF_PEAK = new Date('2026-10-12T12:00:00Z')
@@ -168,6 +169,12 @@ function tokensCss(theme: keyof typeof TOKENS): string {
     .join('')
 }
 
+function subagents(value: AgentUsage): string {
+  return renderToStaticMarkup(
+    createElement(SubagentCard, { agents: value, cardRef: emptyRef, style: {} }),
+  )
+}
+
 function cell(label: string, markup: string): string {
   return `<figure><figcaption>${label}</figcaption><div class="stage">${markup}</div></figure>`
 }
@@ -191,6 +198,14 @@ it('writes the preview page', () => {
           'panel · 含子智能体',
           panel(priced as PriceResult, { agents: AGENTS, totalCny: ROOT_CNY + AGENTS.cny }),
         ),
+        cell('子智能体 · 左侧卡片（展开态）', subagents(AGENTS)),
+        cell(
+          'panel + 左侧卡片 · 组合',
+          `<div class="pair">${subagents(AGENTS)}${panel(priced as PriceResult, {
+            agents: AGENTS,
+            totalCny: ROOT_CNY + AGENTS.cny,
+          })}</div>`,
+        ),
         cell('panel · 价格表未就绪', panel({ kind: 'no-book' })),
       ].join('')
       return `<section data-theme="${theme}" style="${tokensCss(theme)}"><h2>${theme}</h2><div class="grid">${cells}</div></section>`
@@ -209,7 +224,9 @@ figure{margin:0;display:flex;flex-direction:column;gap:10px}
 figcaption{font-size:11px;letter-spacing:.02em;opacity:.55}
 .stage{position:relative;min-height:60px}
 ${css}
-.tb-panel,.tb-hover{position:relative!important;left:auto!important;top:auto!important;right:auto!important}
+.tb-panel,.tb-hover,.tb-subagents{position:relative!important;left:auto!important;top:auto!important;right:auto!important}
+.tb-subagents{flex:none}
+.pair{display:flex;gap:8px;align-items:flex-start}
 </style></head><body>${body}</body></html>`
 
   mkdirSync(new URL('../preview/', import.meta.url), { recursive: true })
