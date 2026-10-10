@@ -70,7 +70,15 @@ export interface Rate {
   name: string
 }
 
-export type PriceBook = Record<string, Record<string, Rate>>
+export type PriceBranches = Record<string, Record<string, Rate>>
+
+export interface PriceBook {
+  branches: PriceBranches
+
+  providerIndex: Record<string, string>
+
+  modelIndex: Record<string, { providerId: string; modelId: string }>
+}
 
 export interface ResolvedRate {
   rate: Rate
@@ -113,10 +121,14 @@ export function rateOfEntry(entry: unknown, modelId: string): Rate | null {
   }
 }
 
-export function buildBook(payload: unknown): PriceBook {
+export function emptyBook(): PriceBook {
+  return { branches: {}, providerIndex: {}, modelIndex: {} }
+}
+
+export function buildBranches(payload: unknown): PriceBranches {
   const providers = asRecord(payload)
-  const book: PriceBook = {}
-  if (providers === null) return book
+  const branches: PriceBranches = {}
+  if (providers === null) return branches
   for (const providerId of Object.keys(providers)) {
     const provider = asRecord(providers[providerId])
     if (provider === null) continue
@@ -127,35 +139,48 @@ export function buildBook(payload: unknown): PriceBook {
       const rate = rateOfEntry(models[modelId], modelId)
       if (rate !== null) branch[modelId] = rate
     }
-    if (Object.keys(branch).length > 0) book[providerId] = branch
+    if (Object.keys(branch).length > 0) branches[providerId] = branch
   }
-  return book
+  return branches
+}
+
+export function indexBook(branches: PriceBranches): PriceBook {
+  const providerIndex: Record<string, string> = {}
+  const modelIndex: Record<string, { providerId: string; modelId: string }> = {}
+  for (const providerId of Object.keys(branches)) {
+    const lowerProvider = providerId.toLowerCase()
+    if (providerIndex[lowerProvider] === undefined) providerIndex[lowerProvider] = providerId
+    const branch = branches[providerId]
+    if (branch === undefined) continue
+    for (const modelId of Object.keys(branch)) {
+      const lowerModel = modelId.toLowerCase()
+      if (modelIndex[lowerModel] === undefined) modelIndex[lowerModel] = { providerId, modelId }
+    }
+  }
+  return { branches, providerIndex, modelIndex }
+}
+
+export function buildBook(payload: unknown): PriceBook {
+  return indexBook(buildBranches(payload))
 }
 
 export function resolveRate(book: PriceBook, provider: string, model: string): ResolvedRate | null {
-  const exact = book[provider]
-  const exactRate = exact?.[model]
+  const exactRate = book.branches[provider]?.[model]
   if (exactRate !== undefined) {
     return { rate: exactRate, providerId: provider, modelId: model, exact: true }
   }
 
-  const wantedProvider = provider.toLowerCase()
-  for (const providerId of Object.keys(book)) {
-    if (providerId.toLowerCase() !== wantedProvider) continue
-    const branch = book[providerId]
-    const rate = branch?.[model]
+  const providerId = book.providerIndex[provider.toLowerCase()]
+  if (providerId !== undefined) {
+    const rate = book.branches[providerId]?.[model]
     if (rate !== undefined) return { rate, providerId, modelId: model, exact: false }
   }
 
-  const wantedModel = model.toLowerCase()
-  for (const providerId of Object.keys(book)) {
-    const branch = book[providerId]
-    if (branch === undefined) continue
-    for (const modelId of Object.keys(branch)) {
-      if (modelId.toLowerCase() === wantedModel) {
-        const rate = branch[modelId]
-        if (rate !== undefined) return { rate, providerId, modelId, exact: false }
-      }
+  const hit = book.modelIndex[model.toLowerCase()]
+  if (hit !== undefined) {
+    const rate = book.branches[hit.providerId]?.[hit.modelId]
+    if (rate !== undefined) {
+      return { rate, providerId: hit.providerId, modelId: hit.modelId, exact: false }
     }
   }
   return null
@@ -238,7 +263,7 @@ export function priceUsage(
 ): PriceResult {
   const buckets = asRecord(usage)
   if (buckets === null) return { kind: 'no-usage' }
-  if (Object.keys(book).length === 0) return { kind: 'no-book' }
+  if (Object.keys(book.branches).length === 0) return { kind: 'no-book' }
   if (provider === undefined || model === undefined) return { kind: 'no-route' }
 
   const resolved = resolveRate(book, provider, model)
@@ -277,6 +302,87 @@ export function priceUsage(
     modelId: resolved.modelId,
     modelName: resolved.rate.name,
     rateExact: resolved.exact,
+  }
+}
+
+export interface UsageSource {
+  usage: unknown
+  provider: string | undefined
+  model: string | undefined
+}
+
+export interface AgentRollup {
+  count: number
+  cny: number
+}
+
+export interface SessionTreePrice {
+  totalCny: number
+  totalTokens: number
+  rows: PricedRow[]
+  peak: boolean
+  agents: AgentRollup
+}
+
+export function priceSessionTree(
+  sources: ReadonlyArray<UsageSource>,
+  book: PriceBook,
+  at: Date,
+): SessionTreePrice | null {
+  const totals = new Map<keyof UsageBuckets, PricedRow>()
+  let totalCny = 0
+  let totalTokens = 0
+  let peak = false
+  let priced = 0
+  let agentCount = 0
+  let agentCny = 0
+
+  for (let index = 0; index < sources.length; index += 1) {
+    const source = sources[index]
+    if (source === undefined) continue
+    const result = priceUsage(source.usage, book, source.provider, source.model, at)
+    if (result.kind !== 'ok') continue
+
+    priced += 1
+    totalCny += result.totalCny
+    totalTokens += result.totalTokens
+    if (result.peak) peak = true
+    if (index > 0) {
+      agentCount += 1
+      agentCny += result.totalCny
+    }
+
+    for (const row of result.rows) {
+      const prev = totals.get(row.key)
+      totals.set(
+        row.key,
+        prev === undefined
+          ? { ...row }
+          : {
+              key: row.key,
+              label: row.label,
+              tokens: prev.tokens + row.tokens,
+              rate: row.rate,
+              usd: prev.usd + row.usd,
+            },
+      )
+    }
+  }
+
+  if (priced === 0) return null
+
+  const rows: PricedRow[] = []
+  for (const bucket of BUCKETS) {
+    const row = totals.get(bucket.key)
+    if (row !== undefined) rows.push(row)
+  }
+
+  return {
+    totalCny,
+    totalTokens,
+    rows,
+    peak,
+    agents: { count: agentCount, cny: agentCny },
   }
 }
 

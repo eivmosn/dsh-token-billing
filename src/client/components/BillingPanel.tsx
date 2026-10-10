@@ -1,11 +1,23 @@
 import { IconDataOutlineRegular } from '@deepseek-ai/dsh-client-ui-primitives'
 import { useId, useState, type CSSProperties, type ReactNode } from 'react'
 
-import { formatCost, formatExactTokens, toCny, type PriceResult } from '../../billing.ts'
+import {
+  formatCost,
+  formatExactTokens,
+  toCny,
+  type PricedRow,
+  type PriceResult,
+} from '../../billing.ts'
 import type { PanelRef } from '../hooks/use-overlay.ts'
 import type { BalanceState } from '../stores/account-balance.ts'
 import { BalanceValue } from './BalanceValue.tsx'
 import { UnitRatesCard } from './UnitRatesCard.tsx'
+
+export interface AgentUsage {
+  count: number
+  cny: number
+  unreported: number
+}
 
 export interface BillingPanelProps {
   priced: PriceResult
@@ -15,6 +27,9 @@ export interface BillingPanelProps {
   panelRef: PanelRef
   style: CSSProperties
   defaultRatesOpen?: boolean
+  rows?: PricedRow[]
+  totalTokens?: number
+  agents?: AgentUsage
 }
 
 function Chevron(): ReactNode {
@@ -42,7 +57,13 @@ export function BillingPanel({
   panelRef,
   style,
   defaultRatesOpen = false,
+  rows,
+  totalTokens,
+  agents,
 }: BillingPanelProps): ReactNode {
+  const detailRows = rows ?? (priced.kind === 'ok' ? priced.rows : [])
+  const detailTokens = totalTokens ?? (priced.kind === 'ok' ? priced.totalTokens : 0)
+
   const [ratesOpen, setRatesOpen] = useState(defaultRatesOpen)
   const ratesId = useId()
 
@@ -70,7 +91,7 @@ export function BillingPanel({
           <dl className="tb-details" data-token-billing-details>
             <dt>模型</dt>
             <dd data-token-billing-model="">{priced.modelName}</dd>
-            {priced.rows.flatMap((row) =>
+            {detailRows.flatMap((row) =>
               row.tokens === 0
                 ? []
                 : [
@@ -81,7 +102,17 @@ export function BillingPanel({
                   ],
             )}
             <dt>合计 token</dt>
-            <dd>{formatExactTokens(priced.totalTokens)}</dd>
+            <dd>{formatExactTokens(detailTokens)}</dd>
+            {agents !== undefined && agents.count > 0 && (
+              <>
+                <dt>子智能体</dt>
+                <dd data-token-billing-agents={agents.count}>
+                  {agents.unreported > 0
+                    ? `${agents.count} 个 · ${formatCost(agents.cny)} · ${agents.unreported} 个未上报`
+                    : `${agents.count} 个 · ${formatCost(agents.cny)}`}
+                </dd>
+              </>
+            )}
           </dl>
 
           <button

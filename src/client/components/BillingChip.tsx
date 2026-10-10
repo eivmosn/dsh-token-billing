@@ -2,11 +2,18 @@ import { IconDataOutlineRegular } from '@deepseek-ai/dsh-client-ui-primitives'
 import * as react from 'react'
 import { createPortal } from 'react-dom'
 
-import { ALERT_THRESHOLD_CNY, formatCost, priceUsage, type UsageBuckets } from '../../billing.ts'
+import {
+  ALERT_THRESHOLD_CNY,
+  formatCost,
+  priceSessionTree,
+  priceUsage,
+  type UsageBuckets,
+} from '../../billing.ts'
 import type { BillingChipProps, ModelSelection } from '../../context-types.ts'
 import { MEASURE_STYLE, POSTURE_REFRESH_MS } from '../constants.ts'
 import { useCountUp } from '../hooks/use-count-up.ts'
 import { useOverlay } from '../hooks/use-overlay.ts'
+import { collectChildUsage } from '../session-tree.ts'
 import { accountBalance } from '../stores/account-balance.ts'
 import { priceBook } from '../stores/price-book.ts'
 import { BillingHoverCard } from './BillingHoverCard.tsx'
@@ -15,12 +22,21 @@ import { BillingPanel } from './BillingPanel.tsx'
 export function BillingChip({
   useProjection,
   useSessionStatus,
+  useSessions,
+  sessionId,
 }: BillingChipProps): react.ReactNode {
   const usage = useProjection<UsageBuckets | undefined>('tokenUsage')
   const selection = useProjection<ModelSelection | undefined>('modelSelection')
   const provider = selection?.next?.provider ?? selection?.lastUsed?.provider
   const model = selection?.next?.model ?? selection?.lastUsed?.model
   const status = useSessionStatus === undefined ? undefined : useSessionStatus((value) => value)
+
+  const sessionRows = useSessions === undefined ? undefined : useSessions((state) => state.byId)
+
+  const descendants = react.useMemo(
+    () => collectChildUsage(sessionRows, sessionId),
+    [sessionRows, sessionId],
+  )
 
   const book = react.useSyncExternalStore(
     priceBook.subscribe,
@@ -67,11 +83,29 @@ export function BillingChip({
     [usage, book.book, provider, model, now],
   )
 
-  const animatedCny = useCountUp(priced.kind === 'ok' ? priced.totalCny : 0)
+  const sources = react.useMemo(
+    () => [{ usage, provider, model }, ...descendants.sources],
+    [usage, provider, model, descendants],
+  )
+
+  const tree = react.useMemo(
+    () => priceSessionTree(sources, book.book, new Date(now)),
+    [sources, book.book, now],
+  )
+
+  const totalCny = priced.kind === 'ok' ? (tree?.totalCny ?? priced.totalCny) : 0
+  const totalTokens = priced.kind === 'ok' ? (tree?.totalTokens ?? priced.totalTokens) : 0
+  const rows = priced.kind === 'ok' ? (tree?.rows ?? priced.rows) : []
+  const agents =
+    priced.kind === 'ok' && tree !== null
+      ? { ...tree.agents, unreported: descendants.unreported }
+      : undefined
+
+  const animatedCny = useCountUp(totalCny)
 
   if (priced.kind === 'no-usage') return null
 
-  const overThreshold = priced.kind === 'ok' && priced.totalCny >= ALERT_THRESHOLD_CNY
+  const overThreshold = priced.kind === 'ok' && totalCny >= ALERT_THRESHOLD_CNY
 
   const headline =
     priced.kind === 'ok' ? formatCost(animatedCny) : priced.kind === 'no-book' ? '¥ —' : '¥ ?'
@@ -97,7 +131,7 @@ export function BillingChip({
 
   const hoverAmount =
     priced.kind === 'ok'
-      ? `${formatCost(priced.totalCny)}${overThreshold ? `（已超 ¥${ALERT_THRESHOLD_CNY}）` : ''}`
+      ? `${formatCost(totalCny)}${overThreshold ? `（已超 ¥${ALERT_THRESHOLD_CNY}）` : ''}`
       : priced.kind === 'no-book'
         ? '价格表加载中…'
         : '该模型暂无挂牌价'
@@ -122,10 +156,10 @@ export function BillingChip({
           className="tb-pill"
           aria-haspopup="dialog"
           aria-expanded={open}
-          aria-label={`${anchorLabel} ${formatCost(priced.kind === 'ok' ? priced.totalCny : 0)}${
+          aria-label={`${anchorLabel} ${formatCost(totalCny)}${
             overThreshold ? `，已超过 ${ALERT_THRESHOLD_CNY} 元` : ''
           }`}
-          data-token-billing-amount={priced.kind === 'ok' ? priced.totalCny : ''}
+          data-token-billing-amount={priced.kind === 'ok' ? totalCny : ''}
           onClick={() => {
             setHover(false)
             setOpen(!open)
@@ -155,6 +189,9 @@ export function BillingChip({
             balance={balance}
             overThreshold={overThreshold}
             headline={headline}
+            rows={rows}
+            totalTokens={totalTokens}
+            agents={agents}
             panelRef={panelRef}
             style={pos ?? MEASURE_STYLE}
           />,

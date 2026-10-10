@@ -6,6 +6,8 @@ import {
   formatExactTokens,
   formatRate,
   buildBook,
+  emptyBook,
+  priceSessionTree,
   isPeak,
   numOf,
   parseBalancePayload,
@@ -80,14 +82,14 @@ describe('buildBook', () => {
       badModels: { models: 7 },
       partlyBad: { models: { ok: entry(), broken: { cost: {} } } },
     })
-    expect(new Set(Object.keys(built))).toEqual(new Set(['good', 'partlyBad']))
-    expect(Object.keys(built.partlyBad ?? {})).toEqual(['ok'])
+    expect(new Set(Object.keys(built.branches))).toEqual(new Set(['good', 'partlyBad']))
+    expect(Object.keys(built.branches.partlyBad ?? {})).toEqual(['ok'])
   })
 
   it('returns an empty book for a payload that is not a record', () => {
-    expect(buildBook(null)).toEqual({})
-    expect(buildBook([1, 2])).toEqual({})
-    expect(buildBook('nope')).toEqual({})
+    expect(buildBook(null)).toEqual(emptyBook())
+    expect(buildBook([1, 2])).toEqual(emptyBook())
+    expect(buildBook('nope')).toEqual(emptyBook())
   })
 })
 
@@ -110,7 +112,7 @@ describe('resolveRate', () => {
 
   it('returns null for an unknown model', () => {
     expect(resolveRate(book, 'deepseek', 'gpt-9')).toBeNull()
-    expect(resolveRate({}, 'deepseek', 'deepseek-flash')).toBeNull()
+    expect(resolveRate(emptyBook(), 'deepseek', 'deepseek-flash')).toBeNull()
   })
 })
 
@@ -143,7 +145,9 @@ describe('priceUsage', () => {
     expect(priceUsage(null, book, 'deepseek', 'deepseek-flash', offPeak)).toEqual({
       kind: 'no-usage',
     })
-    expect(priceUsage(usage, {}, 'deepseek', 'deepseek-flash', offPeak)).toEqual({ kind: 'no-book' })
+    expect(priceUsage(usage, emptyBook(), 'deepseek', 'deepseek-flash', offPeak)).toEqual({
+      kind: 'no-book',
+    })
     expect(priceUsage(usage, book, undefined, 'deepseek-flash', offPeak)).toEqual({
       kind: 'no-route',
     })
@@ -363,5 +367,121 @@ describe('readBalanceResponse', () => {
     expect(read.kind).toBe('ready')
     if (read.kind !== 'ready') return
     expect(read.wallets).toEqual([{ currency: 'USD', balance: '2.00' }])
+  })
+})
+
+const twoRouteBook = buildBook({
+  deepseek: {
+    models: {
+      'deepseek-flash': { name: 'Flash', cost: { input: 0.14, output: 0.28 } },
+    },
+  },
+  openai: {
+    models: {
+      'gpt-9': { name: 'GPT-9', cost: { input: 10, output: 20 } },
+    },
+  },
+})
+
+describe('the price book index', () => {
+  it('keeps the first registry hit for an ambiguous model id', () => {
+    const ambiguous = buildBook({
+      first: { models: { shared: { name: 'A', cost: { input: 1, output: 1 } } } },
+      second: { models: { SHARED: { name: 'B', cost: { input: 9, output: 9 } } } },
+    })
+    const resolved = resolveRate(ambiguous, 'unknown-provider', 'Shared')
+    expect(resolved?.providerId).toBe('first')
+    expect(resolved?.modelId).toBe('shared')
+    expect(resolved?.rate.name).toBe('A')
+  })
+
+  it('keeps the first provider for a case-insensitive provider match', () => {
+    expect(resolveRate(twoRouteBook, 'DEEPSEEK', 'deepseek-flash')?.providerId).toBe('deepseek')
+  })
+
+  it('resolves every route the linear scan used to', () => {
+    expect(resolveRate(twoRouteBook, 'deepseek', 'deepseek-flash')?.exact).toBe(true)
+    expect(resolveRate(twoRouteBook, 'DeepSeek', 'deepseek-flash')?.exact).toBe(false)
+    expect(resolveRate(twoRouteBook, 'unlisted', 'deepseek-flash')?.providerId).toBe('deepseek')
+    expect(resolveRate(twoRouteBook, 'deepseek', 'nope')).toBeNull()
+  })
+})
+
+describe('priceSessionTree', () => {
+  const at = new Date('2026-10-12T12:00:00Z')
+  const rootUsage = { uncachedInputTokens: 1_000_000, outputTokens: 1_000_000 }
+  const agentUsage = { uncachedInputTokens: 1_000_000, outputTokens: 1_000_000 }
+  const both = { uncachedInputTokens: 2_000_000, outputTokens: 2_000_000 }
+
+  it('prices each session at its own route instead of the root route', () => {
+    const tree = priceSessionTree(
+      [
+        { usage: rootUsage, provider: 'deepseek', model: 'deepseek-flash' },
+        { usage: agentUsage, provider: 'openai', model: 'gpt-9' },
+      ],
+      twoRouteBook,
+      at,
+    )
+    if (tree === null) throw new Error('expected a priced tree')
+
+    const root = priceUsage(rootUsage, twoRouteBook, 'deepseek', 'deepseek-flash', at)
+    const agent = priceUsage(agentUsage, twoRouteBook, 'openai', 'gpt-9', at)
+    if (root.kind !== 'ok' || agent.kind !== 'ok') throw new Error('fixtures must price')
+
+    expect(tree.totalCny).toBeCloseTo(root.totalCny + agent.totalCny, 10)
+    expect(tree.agents).toEqual({ count: 1, cny: agent.totalCny })
+    expect(tree.totalTokens).toBe(4_000_000)
+
+    expect(tree.agents.cny).toBeCloseTo(toCny(30), 10)
+
+    const naive = priceUsage(both, twoRouteBook, 'deepseek', 'deepseek-flash', at)
+    if (naive.kind !== 'ok') throw new Error('fixture must price')
+    expect(tree.totalCny).toBeGreaterThan(naive.totalCny * 20)
+  })
+
+  it('sums the four buckets across every priced session', () => {
+    const tree = priceSessionTree(
+      [
+        { usage: rootUsage, provider: 'deepseek', model: 'deepseek-flash' },
+        { usage: agentUsage, provider: 'deepseek', model: 'deepseek-flash' },
+      ],
+      twoRouteBook,
+      at,
+    )
+    if (tree === null) throw new Error('expected a priced tree')
+    expect(tree.rows.find((row) => row.key === 'uncachedInputTokens')?.tokens).toBe(2_000_000)
+    expect(tree.rows.find((row) => row.key === 'outputTokens')?.tokens).toBe(2_000_000)
+    expect(tree.rows).toHaveLength(4)
+  })
+
+  it('skips a session it cannot route or price', () => {
+    const tree = priceSessionTree(
+      [
+        { usage: rootUsage, provider: 'deepseek', model: 'deepseek-flash' },
+        { usage: agentUsage, provider: undefined, model: undefined },
+        { usage: agentUsage, provider: 'openai', model: 'not-a-model' },
+      ],
+      twoRouteBook,
+      at,
+    )
+    if (tree === null) throw new Error('expected a priced tree')
+    expect(tree.agents.count).toBe(0)
+  })
+
+  it('returns null when nothing at all could be priced', () => {
+    expect(
+      priceSessionTree(
+        [{ usage: rootUsage, provider: undefined, model: undefined }],
+        twoRouteBook,
+        at,
+      ),
+    ).toBeNull()
+    expect(
+      priceSessionTree(
+        [{ usage: rootUsage, provider: 'deepseek', model: 'deepseek-flash' }],
+        emptyBook(),
+        at,
+      ),
+    ).toBeNull()
   })
 })

@@ -79,9 +79,30 @@ export interface ModelSelection {
   lastUsed?: ModelRoute
 }
 
-export interface BillingChipProps {
+export interface SessionProjections {
+  tokenUsage?: unknown
+  modelSelection?: ModelSelection
+}
 
+export interface SessionSummary {
+  parentId?: string
+  parentSession?: string
+  blank?: boolean
+  origin?: string
+  projectionValues?: SessionProjections
+  projections?: SessionProjections
+}
+
+export interface SessionListState {
+  byId?: Record<string, SessionSummary | undefined>
+}
+
+export interface BillingChipProps {
   useProjection<T = unknown>(name: string): T
 
   useSessionStatus?: <T>(selector: (status: string) => T) => T
+
+  useSessions?: <T>(selector: (state: SessionListState) => T) => T
+
+  sessionId?: string
 }
