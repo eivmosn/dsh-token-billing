@@ -191,13 +191,15 @@ export function resolveRate(book: PriceBook, provider: string, model: string): R
   return null
 }
 
+const SHANGHAI_CLOCK = new Intl.DateTimeFormat('en-US', {
+  timeZone: 'Asia/Shanghai',
+  weekday: 'short',
+  hour: '2-digit',
+  hour12: false,
+})
+
 export function isPeak(at: Date): boolean {
-  const parts = new Intl.DateTimeFormat('en-US', {
-    timeZone: 'Asia/Shanghai',
-    weekday: 'short',
-    hour: '2-digit',
-    hour12: false,
-  }).formatToParts(at)
+  const parts = SHANGHAI_CLOCK.formatToParts(at)
 
   let weekday = ''
   let hour = 0

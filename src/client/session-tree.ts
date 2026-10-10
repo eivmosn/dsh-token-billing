@@ -1,5 +1,65 @@
-import type { SessionListState, SessionProjections, SessionSummary } from '../context-types.ts'
+import type {
+  SessionListState,
+  SessionProjections,
+  SessionSummary,
+} from '../context-types.ts'
 import type { UsageSource } from '../billing.ts'
+
+const REMINDER_PREFIX = /^<system-reminder>/i
+
+const NAMED_TEAMMATE = /You are teammate\s*["'\u201c\u201d]?\s*([A-Za-z0-9_-]{2,64})/
+
+function shortId(id: string): string {
+  return id.length <= 8 ? id : id.slice(0, 8)
+}
+
+export interface FamilyLabels {
+  names: Map<string, string>
+  catalog: Map<string, string>
+}
+
+export function labelOf(row: SessionSummary | undefined, id: string, family?: FamilyLabels): string {
+  const described = family?.catalog.get(id)
+  if (described !== undefined) return described
+
+  const named = family?.names.get(id)
+  if (named !== undefined) return named
+
+  const raw = (row?.title ?? row?.displayTitle ?? '').replace(/\s+/g, ' ').trim()
+  if (raw === '') return shortId(id)
+  if (!REMINDER_PREFIX.test(raw)) return raw
+
+  const fromReminder = NAMED_TEAMMATE.exec(raw)?.[1]?.trim()
+  return fromReminder === undefined || fromReminder === '' ? shortId(id) : fromReminder
+}
+
+function familyLabelsOf(
+  byId: Record<string, SessionSummary | undefined>,
+  rootId: string,
+): FamilyLabels {
+  const names = new Map<string, string>()
+  const catalog = new Map<string, string>()
+  const seen = new Set<string>()
+  let id: string | undefined = rootId
+
+  while (id !== undefined && !seen.has(id)) {
+    seen.add(id)
+    const values = projectionsOf(byId[id])
+    for (const member of values?.agentTeam?.members ?? []) {
+      const name = member.name?.trim()
+      if (member.id !== undefined && name !== undefined && name !== '') names.set(member.id, name)
+    }
+    for (const entry of values?.subagentCatalog?.head?.values ?? []) {
+      const label = entry.label?.trim()
+      if (entry.childId !== undefined && label !== undefined && label !== '') {
+        catalog.set(entry.childId, label)
+      }
+    }
+    id = byId[id]?.parentId ?? byId[id]?.parentSession
+  }
+
+  return { names, catalog }
+}
 
 export interface TreeUsage {
   sources: UsageSource[]
@@ -31,6 +91,7 @@ export function collectChildUsage(
     else list.push(id)
   }
 
+  const family = familyLabelsOf(byId, rootId)
   const sources: UsageSource[] = []
   let agentSessions = 0
   let unreported = 0
@@ -54,13 +115,12 @@ export function collectChildUsage(
       }
 
       const selection = values?.modelSelection
-      const summary = byId[childId]
       sources.push({
         usage,
         provider: selection?.next?.provider ?? selection?.lastUsed?.provider,
         model: selection?.next?.model ?? selection?.lastUsed?.model,
         sessionId: childId,
-        label: summary?.title ?? summary?.displayTitle ?? childId,
+        label: labelOf(byId[childId], childId, family),
       })
     }
   }

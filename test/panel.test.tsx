@@ -213,7 +213,7 @@ describe('SubagentCard', () => {
     expect(html).toContain('data-token-billing-subagents')
     expect(html).toContain('梳理计费口径')
     expect(html).toContain('¥0.510')
-    expect(html).toContain('tb-subagentModel')
+    expect(html).toContain('DeepSeek V4 Flash')
     expect(html).toContain('268K token')
     expect(html).toContain('¥0.217')
     expect(html).not.toContain('另有')

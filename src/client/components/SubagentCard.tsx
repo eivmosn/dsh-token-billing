@@ -1,11 +1,6 @@
 import type { CSSProperties, ReactNode } from 'react'
 
-import {
-  formatCost,
-  formatExactTokens,
-  formatTokens,
-  type AgentRollup,
-} from '../../billing.ts'
+import { formatCost, formatExactTokens, formatTokens, type AgentRollup } from '../../billing.ts'
 import { PANEL_GAP, PANEL_MARGIN } from '../constants.ts'
 import type { PanelRef } from '../hooks/use-overlay.ts'
 
@@ -65,10 +60,7 @@ export function SubagentCard({ agents, cardRef, style }: SubagentCardProps): Rea
               <span className="tb-subagentModel" title={item.modelName}>
                 {item.modelName}
               </span>
-              <span
-                className="tb-subagentTokens"
-                title={`${formatExactTokens(item.tokens)} token`}
-              >
+              <span className="tb-subagentTokens" title={`${formatExactTokens(item.tokens)} token`}>
                 {`${formatTokens(item.tokens)} token`}
               </span>
             </div>

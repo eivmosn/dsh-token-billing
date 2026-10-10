@@ -79,9 +79,22 @@ export interface ModelSelection {
   lastUsed?: ModelRoute
 }
 
+export interface TeamMember {
+  id?: string
+  name?: string
+  description?: string
+}
+
+export interface CatalogEntry {
+  childId?: string
+  label?: string
+}
+
 export interface SessionProjections {
   tokenUsage?: unknown
   modelSelection?: ModelSelection
+  agentTeam?: { members?: TeamMember[] }
+  subagentCatalog?: { head?: { values?: CatalogEntry[] } }
 }
 
 export interface SessionSummary {
