@@ -114,8 +114,15 @@ const TOKENS = {
   },
 } as const
 
+const STATIC_TOKENS: Record<string, string> = {
+  '--dsw-static-deepseek-400': '#7aaaff',
+  '--dsw-static-blue-400': '#60a5fa',
+  '--dsw-static-green-400': '#4ed17e',
+  '--dsw-static-amber-400': '#f7ad31',
+}
+
 function tokensCss(theme: keyof typeof TOKENS): string {
-  return Object.entries(TOKENS[theme])
+  return Object.entries({ ...TOKENS[theme], ...STATIC_TOKENS })
     .map(([name, value]) => `${name}:${value};`)
     .join('')
 }

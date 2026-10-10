@@ -1,6 +1,6 @@
 {
   "name": "dsh-token-billing",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Live billing chip for DeepSeek Harness — appends an estimated session cost (¥) to the composer dock row, with hover amount and a click-open breakdown panel",
   "type": "module",
   "license": "MIT",
