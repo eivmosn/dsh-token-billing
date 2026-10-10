@@ -80,7 +80,7 @@ export function BillingChip({
     }
     if (previousRunning.current) return
     previousRunning.current = true
-    setBaseline(usage)
+    setBaseline(usage ?? {})
   }, [running, usage])
 
   const [hover, setHover] = react.useState(false)
