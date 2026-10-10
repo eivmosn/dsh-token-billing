@@ -537,7 +537,7 @@ button.tb-pill[aria-expanded="true"] {
   margin-left: 6px;
   vertical-align: middle;
   position: relative;
-  top: -2px;
+  top: -1px;
   background: var(--dsw-alias-state-success-primary);
   flex: none;
   display: inline-block;
