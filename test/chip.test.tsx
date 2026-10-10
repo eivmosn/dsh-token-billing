@@ -15,6 +15,7 @@ const render = (running: boolean): string =>
           : { lastUsed: { provider: 'deepseek', model: 'deepseek-flash' } },
       useSessionStatus: (selector: (statuses: unknown) => unknown) =>
         selector(new Map([['session-1', { running }]])),
+      useSessions: (selector: (state: unknown) => unknown) => selector({ byId: {} }),
       sessionId: 'session-1',
     }),
   )
@@ -48,6 +49,7 @@ describe('BillingChip', () => {
               ['session-1', { running: false }],
             ]),
           ),
+        useSessions: (selector: (state: unknown) => unknown) => selector({ byId: {} }),
         sessionId: 'session-1',
       }),
     )

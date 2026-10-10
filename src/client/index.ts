@@ -1,5 +1,6 @@
 import type { ClientContext } from '../context-types.ts'
 import { BillingChip } from './components/BillingChip.tsx'
+import { bindLocale } from './locale.ts'
 import { accountBalance } from './stores/account-balance.ts'
 import { priceBook } from './stores/price-book.ts'
 import { insertStyles } from './styles.ts'
@@ -9,6 +10,8 @@ export const name = 'dsh-token-billing'
 export const inject = ['slots']
 
 export function apply(ctx: ClientContext): void {
+  bindLocale(ctx.get?.('locale'))
+
   const disposeStyles = insertStyles()
   ctx.effect(() => disposeStyles, 'dsh-token-billing: styles')
 

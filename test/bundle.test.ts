@@ -164,6 +164,7 @@ describe.skipIf(!built)('the built artifacts', () => {
             name === 'tokenUsage' ? usage : { lastUsed: { provider: 'deepseek', model: 'x' } },
           useSessionStatus: (selector: (status: unknown) => unknown) =>
             selector(new Map([['session-1', { running: false }]])),
+          useSessions: (selector: (state: unknown) => unknown) => selector({ byId: {} }),
         }),
       )
 

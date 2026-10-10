@@ -22,9 +22,11 @@ import {
   USAGE_URL,
   type AgentRollup,
   type PricedRow,
+  type UsageBuckets,
   type PriceResult,
 } from '../../billing.ts'
 import { MEASURE_STYLE } from '../constants.ts'
+import { t } from '../locale.ts'
 import { useCountUp } from '../hooks/use-count-up.ts'
 import type { PanelRef } from '../hooks/use-overlay.ts'
 import type { BalanceState } from '../stores/account-balance.ts'
@@ -36,6 +38,13 @@ const useBrowserLayoutEffect = typeof document === 'undefined' ? useEffect : use
 
 export interface AgentUsage extends AgentRollup {
   unreported: number
+}
+
+const BUCKET_LABEL: Partial<Record<keyof UsageBuckets, string>> = {
+  uncachedInputTokens: 'bucket.miss',
+  cacheReadTokens: 'bucket.hit',
+  cacheWriteTokens: 'bucket.write',
+  outputTokens: 'bucket.out',
 }
 
 export interface BillingPanelProps {
@@ -143,13 +152,13 @@ export function BillingPanel({
       ref={panelRef}
       className="tb-panel"
       role="dialog"
-      aria-label="Token 计费详情"
+      aria-label={t('panel.aria')}
       style={style}
     >
       <div className="tb-title">
         <span className="tb-titleLabel">
           <IconDataOutlineRegular />
-          本会话预估费用
+          {t('panel.title')}
         </span>
         <span className="tb-titleValue">
           {priced.kind === 'ok' ? formatCost(totalCny) : headline}
@@ -161,7 +170,7 @@ export function BillingPanel({
         <>
           <dl className="tb-details" data-token-billing-details>
             <div className="tb-row">
-              <dt>模型</dt>
+              <dt>{t('panel.model')}</dt>
               <dd data-token-billing-model="">{priced.modelName}</dd>
             </div>
             {detailRows.flatMap((row) =>
@@ -169,19 +178,19 @@ export function BillingPanel({
                 ? []
                 : [
                     <div className="tb-row" key={row.key}>
-                      <dt>{row.label}</dt>
+                      <dt>{t(BUCKET_LABEL[row.key] ?? '') || row.label}</dt>
                       <dd>{`${formatExactTokens(row.tokens)} · ${formatCost(toCny(row.usd))}`}</dd>
                     </div>,
                   ],
             )}
             {turn !== undefined && (
               <div className="tb-row" data-token-billing-turn-value="">
-                <dt>本次对话</dt>
+                <dt>{t('panel.turn')}</dt>
                 <dd>{`${formatExactTokens(turn.tokens)} · ${formatCost(animatedTurnCny)}`}</dd>
               </div>
             )}
             <div className="tb-row">
-              <dt>会话合计</dt>
+              <dt>{t('panel.session')}</dt>
               <dd data-token-billing-session-value="">
                 {`${formatExactTokens(detailTokens)} · ${formatCost(animatedCny)}`}
               </dd>
@@ -201,17 +210,17 @@ export function BillingPanel({
                       data-token-billing-agents-toggle
                       onClick={() => setAgentsVisible(!agentsOpen)}
                     >
-                      子智能体
+                      {t('panel.agents')}
                       <Chevron className="tb-agentChevron" />
                     </button>
                   ) : (
-                    '子智能体'
+                    t('panel.agents')
                   )}
                 </dt>
                 <dd data-token-billing-agents={agents.count}>
                   {agents.unreported > 0
-                    ? `${agents.count} 个 · ${formatCost(agents.cny)} · ${agents.unreported} 个未上报`
-                    : `${agents.count} 个 · ${formatCost(agents.cny)}`}
+                    ? `${t('panel.agentsCount', { count: agents.count, cost: formatCost(agents.cny) })}${t('panel.agentsUnreported', { count: agents.unreported })}`
+                    : t('panel.agentsCount', { count: agents.count, cost: formatCost(agents.cny) })}
                 </dd>
               </div>
             )}
@@ -236,8 +245,10 @@ export function BillingPanel({
             data-token-billing-rates-toggle
             onClick={() => setRatesOpen(!ratesOpen)}
           >
-            <span className="tb-rateToggleLabel">每百万 token 单价</span>
-            <span className="tb-rateToggleHint">{priced.peak ? '高峰' : '低谷'}</span>
+            <span className="tb-rateToggleLabel">{t('panel.rates')}</span>
+            <span className="tb-rateToggleHint">
+              {t(priced.peak ? 'panel.peak' : 'panel.offPeak')}
+            </span>
             <Chevron />
           </button>
 
@@ -249,18 +260,18 @@ export function BillingPanel({
         </>
       )}
 
-      {priced.kind === 'no-book' && <div className="tb-note">正在获取价格表，稍后自动重试。</div>}
+      {priced.kind === 'no-book' && <div className="tb-note">{t('panel.loading')}</div>}
 
       {priced.kind === 'unpriced' && (
-        <div className="tb-note">价格表中没有该模型的挂牌价，无法估算。</div>
+        <div className="tb-note">{t('panel.noRateDetail')}</div>
       )}
 
-      {priced.kind === 'no-route' && <div className="tb-note">尚未确定当前模型。</div>}
+      {priced.kind === 'no-route' && <div className="tb-note">{t('panel.noModel')}</div>}
 
       <div className="tb-balanceRow" data-token-billing-balance>
-        <span className="tb-balanceLabel">账户余额</span>
+        <span className="tb-balanceLabel">{t('panel.balance')}</span>
         {balance.status === 'ready' ? (
-          <Tooltip label="点击查看" side="top" portal>
+          <Tooltip label={t('balance.usageTip')} side="top" portal>
             <a
               className="tb-balanceValue tb-balanceLink"
               href={USAGE_URL}

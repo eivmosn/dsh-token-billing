@@ -15,8 +15,10 @@ import type { BillingChipProps, ModelSelection } from '../../context-types.ts'
 import { MEASURE_STYLE, POSTURE_REFRESH_MS } from '../constants.ts'
 import { useCountUp } from '../hooks/use-count-up.ts'
 import { useOverlay } from '../hooks/use-overlay.ts'
+import { t } from '../locale.ts'
 import { collectChildUsage } from '../session-tree.ts'
 import { accountBalance } from '../stores/account-balance.ts'
+import { readTurnBaseline, writeTurnBaseline } from '../stores/turn-baseline.ts'
 import { priceBook } from '../stores/price-book.ts'
 import { BillingHoverCard } from './BillingHoverCard.tsx'
 import { BillingPanel } from './BillingPanel.tsx'
@@ -31,12 +33,9 @@ export function BillingChip({
   const selection = useProjection<ModelSelection | undefined>('modelSelection')
   const provider = selection?.next?.provider ?? selection?.lastUsed?.provider
   const model = selection?.next?.model ?? selection?.lastUsed?.model
-  const running =
-    useSessionStatus === undefined
-      ? false
-      : useSessionStatus((statuses) => statuses.get(sessionId ?? '')?.running === true)
+  const running = useSessionStatus((statuses) => statuses.get(sessionId ?? '')?.running === true)
 
-  const sessionState = useSessions === undefined ? undefined : useSessions((state) => state)
+  const sessionState = useSessions((state) => state)
 
   const descendants = react.useMemo(
     () => collectChildUsage(sessionState, sessionId),
@@ -61,8 +60,10 @@ export function BillingChip({
     return () => clearInterval(id)
   }, [])
 
-  const previousRunning = react.useRef(false)
-  const [baseline, setBaseline] = react.useState<UsageBuckets | undefined>(undefined)
+  const [baseline, setBaseline] = react.useState<UsageBuckets | undefined>(() =>
+    running ? readTurnBaseline(sessionId) : undefined,
+  )
+  const previousRunning = react.useRef(baseline !== undefined)
 
   react.useEffect(() => {
     if (!running) {
@@ -71,8 +72,10 @@ export function BillingChip({
     }
     if (previousRunning.current) return
     previousRunning.current = true
-    setBaseline(usage ?? {})
-  }, [running, usage])
+    const start = usage ?? {}
+    setBaseline(start)
+    writeTurnBaseline(sessionId, start)
+  }, [running, usage, sessionId])
 
   const [hover, setHover] = react.useState(false)
   const [open, setOpen] = react.useState(false)
@@ -127,7 +130,7 @@ export function BillingChip({
   const headline =
     priced.kind === 'ok' ? formatCost(animatedCny) : priced.kind === 'no-book' ? '¥ —' : '¥ ?'
 
-  const anchorLabel = priced.kind === 'ok' ? '本会话预估费用' : '本会话费用'
+  const anchorLabel = t(priced.kind === 'ok' ? 'chip.sessionCost' : 'chip.sessionCostBare')
 
   const wallet = balance.status === 'ready' ? balance.wallets[0] : undefined
   const balanceText =
@@ -154,7 +157,7 @@ export function BillingChip({
             ·
           </span>
           <span className="tb-turn" data-token-billing-turn="">
-            {`本轮消耗 ${formatExactTokens(turn.tokens)} tok 花费 ${formatCost(animatedTurnCny)}`}
+            {`${t('chip.turnTokens', { tokens: formatExactTokens(turn.tokens) })} ${t('chip.turnCost', { cost: formatCost(animatedTurnCny) })}`}
           </span>
         </>
       )}
@@ -166,8 +169,8 @@ export function BillingChip({
     priced.kind === 'ok'
       ? formatCost(totalCny)
       : priced.kind === 'no-book'
-        ? '价格表加载中…'
-        : '该模型暂无挂牌价'
+        ? t('panel.noBook')
+        : t('panel.noRate')
 
   return (
     <div className="tb-root" data-token-billing>
@@ -186,8 +189,8 @@ export function BillingChip({
           aria-haspopup="dialog"
           aria-expanded={open}
           aria-label={`${anchorLabel} ${formatCost(totalCny)}${
-            balanceText === undefined ? '' : `，账户余额 ${balanceText}`
-          }${running ? '，计费中' : ''}`}
+            balanceText === undefined ? '' : t('chip.balanceSuffix', { amount: balanceText })
+          }${running ? t('chip.billingSuffix') : ''}`}
           data-token-billing-amount={priced.kind === 'ok' ? totalCny : ''}
           onClick={() => {
             setHover(false)

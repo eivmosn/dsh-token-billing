@@ -14,4 +14,8 @@ export const BALANCE_REUSE_MS = 15_000
 
 export const BALANCE_FRESH_MS = 3_000
 
+export const BALANCE_RELOAD_COOLDOWN_MS = 60_000
+
+export const TURN_BASELINE_FRESH_MS = 30 * 60_000
+
 export const POSTURE_REFRESH_MS = 30_000

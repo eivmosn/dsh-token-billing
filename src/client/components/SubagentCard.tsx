@@ -2,6 +2,7 @@ import type { CSSProperties, ReactNode } from 'react'
 
 import { formatCost, formatExactTokens, formatTokens, type AgentRollup } from '../../billing.ts'
 import { PANEL_GAP, PANEL_MARGIN } from '../constants.ts'
+import { t } from '../locale.ts'
 import type { PanelRef } from '../hooks/use-overlay.ts'
 
 export interface SubagentCardProps {
@@ -42,11 +43,11 @@ export function SubagentCard({ agents, cardRef, style }: SubagentCardProps): Rea
       ref={cardRef}
       className="tb-subagents"
       role="dialog"
-      aria-label="子智能体花费"
+      aria-label={t('subagents.aria')}
       data-token-billing-subagents
       style={style}
     >
-      <div className="tb-subagentTitle">子智能体</div>
+      <div className="tb-subagentTitle">{t('subagents.title')}</div>
       <ul className="tb-subagentList">
         {agents.items.map((item) => (
           <li className="tb-subagentItem" key={item.id}>
@@ -66,7 +67,7 @@ export function SubagentCard({ agents, cardRef, style }: SubagentCardProps): Rea
             </div>
           </li>
         ))}
-        {agents.overflow > 0 && <li className="tb-subagentMore">{`另有 ${agents.overflow} 个`}</li>}
+        {agents.overflow > 0 && <li className="tb-subagentMore">{t('subagents.more', { count: agents.overflow })}</li>}
       </ul>
     </div>
   )

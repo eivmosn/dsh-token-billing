@@ -1,6 +1,7 @@
 import type { CSSProperties, ReactNode } from 'react'
 
 import type { PriceResult } from '../../billing.ts'
+import { t } from '../locale.ts'
 import type { PanelRef } from '../hooks/use-overlay.ts'
 
 export interface BillingHoverCardProps {
@@ -21,8 +22,8 @@ export function BillingHoverCard({
       <div className="tb-hoverAmount">{amount}</div>
       <div className="tb-hoverBasis">
         {priced.kind === 'ok'
-          ? `${priced.modelName}${priced.peak ? ' · 高峰' : ' · 低谷'}（估算）`
-          : '点击查看详情'}
+          ? `${priced.modelName} · ${t(priced.peak ? 'panel.peak' : 'panel.offPeak')}${t('hover.estimated')}`
+          : t('hover.details')}
       </div>
     </div>
   )

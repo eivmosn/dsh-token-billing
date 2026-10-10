@@ -4,7 +4,7 @@ import {
   type BalanceRead,
   type DisplayWallet,
 } from '../../billing.ts'
-import { BALANCE_FRESH_MS, BALANCE_REUSE_MS } from '../constants.ts'
+import { BALANCE_FRESH_MS, BALANCE_RELOAD_COOLDOWN_MS, BALANCE_REUSE_MS } from '../constants.ts'
 
 export type BalanceStatus = 'idle' | 'loading' | 'ready' | 'no-key' | 'error'
 
@@ -27,6 +27,26 @@ export interface BalanceStore {
   getSnapshot(): BalanceState
 
   refresh(): Promise<void>
+}
+
+const READ_AT_KEY = 'dsh-token-billing/balance-read-at/v1'
+
+function readStoredAt(): number {
+  try {
+    const raw = sessionStorage.getItem(READ_AT_KEY)
+    const value = raw === null ? Number.NaN : Number(raw)
+    return Number.isFinite(value) ? value : 0
+  } catch {
+    return 0
+  }
+}
+
+function storeAt(at: number): void {
+  try {
+    sessionStorage.setItem(READ_AT_KEY, String(at))
+  } catch {
+    void 0
+  }
 }
 
 export const accountBalance: BalanceStore = (() => {
@@ -56,6 +76,7 @@ export const accountBalance: BalanceStore = (() => {
 
     const settle = (next: BalanceState): void => {
       state = next
+      if (next.status === 'ready' || next.status === 'no-key') storeAt(next.at)
       emit()
     }
 
@@ -121,6 +142,8 @@ export const accountBalance: BalanceStore = (() => {
   return {
     attach() {
       attached = true
+      const at = readStoredAt()
+      if (at !== 0 && Date.now() - at < BALANCE_RELOAD_COOLDOWN_MS) return
       void read(false)
     },
     detach() {

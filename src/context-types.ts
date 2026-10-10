@@ -67,6 +67,7 @@ export interface SlotsService {
 
 export interface ClientContext extends EffectScope {
   slots: SlotsService
+  get?: (name: string) => unknown
 }
 
 export interface ModelRoute {
@@ -122,9 +123,9 @@ export type SessionStatusMap = ReadonlyMap<string, SessionStatusEntry>
 export interface BillingChipProps {
   useProjection<T = unknown>(name: string): T
 
-  useSessionStatus?: <T>(selector: (statuses: SessionStatusMap) => T) => T
+  useSessionStatus: <T>(selector: (statuses: SessionStatusMap) => T) => T
 
-  useSessions?: <T>(selector: (state: SessionListState) => T) => T
+  useSessions: <T>(selector: (state: SessionListState) => T) => T
 
   sessionId?: string
 }
