@@ -33,7 +33,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "check": "pnpm run typecheck && pnpm run lint && pnpm run build && pnpm run test",
-    "prepare": "tsdown"
+    "prepublishOnly": "tsdown"
   },
   "dsh": {
     "bundle": {
