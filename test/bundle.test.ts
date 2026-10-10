@@ -1,12 +1,3 @@
-/**
- * The BUILT artifacts. This is the only test that exercises `lib/`, so it proves
- * the things a source-level test cannot: that the client half still honours the
- * `window.__ModuleLoader__` closure-factory contract, that it requires exactly
- * the specifiers the shell's frozen browser module table answers, and that the
- * Host half ships no runtime import at all.
- *
- * Run `pnpm build` first (or `pnpm check`, which orders the two).
- */
 import { existsSync, readFileSync } from 'node:fs'
 import { createRequire } from 'node:module'
 import { fileURLToPath } from 'node:url'
@@ -20,13 +11,11 @@ import type { ClientContext, SlotRegistration } from '../src/context-types.ts'
 const CLIENT_PATH = fileURLToPath(new URL('../lib/client.js', import.meta.url))
 const HOST_PATH = fileURLToPath(new URL('../lib/index.js', import.meta.url))
 
-/** One registration the browser module table received. */
 interface ModuleEntry {
   id: string
   factory: (require: (specifier: string) => unknown) => unknown
 }
 
-/** The exports a `dsh.client` bundle is expected to hand back to cordis. */
 interface ClientModule {
   name: string
   inject: string[]
@@ -35,10 +24,6 @@ interface ClientModule {
 
 const built = existsSync(CLIENT_PATH) && existsSync(HOST_PATH)
 
-/**
- * Execute `lib/client.js` as the browser would — a classic script whose only job
- * is to register a factory — and return that registration.
- */
 function loadRegistration(): ModuleEntry {
   let entry: ModuleEntry | undefined
   const sandbox = {
@@ -55,17 +40,11 @@ function loadRegistration(): ModuleEntry {
   return entry
 }
 
-/**
- * Materialize the factory with the platform specifiers the shell would answer,
- * recording every specifier it asked for.
- */
 function materialize(): { module: ClientModule; required: string[] } {
   const entry = loadRegistration()
   const required: string[] = []
   const nodeRequire = createRequire(import.meta.url)
 
-  // The primitives package's own dist pulls dev-only peers this repo does not
-  // install; the chip only ever calls these three members.
   const primitives = {
     IconDataOutlineRegular: () => null,
     useAnchoredPosition: () => null,
@@ -99,8 +78,20 @@ describe.skipIf(!built)('the built artifacts', () => {
   it('requires only the specifiers the browser module table answers', () => {
     const { required } = materialize()
     expect(new Set(required)).toEqual(
-      new Set(['@deepseek-ai/dsh-client-ui-primitives', 'react', 'react-dom']),
+      new Set([
+        '@deepseek-ai/dsh-client-ui-primitives',
+        'react',
+        'react/jsx-runtime',
+        'react-dom',
+      ]),
     )
+  })
+
+  it('inlines the stylesheet instead of leaving a .css module request', () => {
+    const source = readFileSync(CLIENT_PATH, 'utf8')
+    expect(source).toContain('.tb-pill {')
+    expect(source).toContain('@keyframes tb-pulse')
+    expect(source).not.toMatch(/require\("[^"]*\.css/)
   })
 
   it('materializes into the cordis plugin face', () => {
@@ -175,8 +166,7 @@ describe.skipIf(!built)('the built artifacts', () => {
       )
 
     expect(render(undefined)).toBe('')
-    // Usage exists but the price book has not arrived yet, so the chip shows the
-    // explicit "no figure" state rather than a misleading ¥0.00.
+
     const html = render({ uncachedInputTokens: 1_000 })
     expect(html).toContain('data-token-billing')
     expect(html).toContain('¥ —')

@@ -1,7 +1,3 @@
-/**
- * The pure billing domain. Every figure the chip shows is a function of these
- * inputs, so this is where the semantics are pinned down.
- */
 import { describe, expect, it } from 'vitest'
 
 import {
@@ -21,7 +17,6 @@ import {
   type PriceBook,
 } from '../src/billing.ts'
 
-/** A registry entry as models.dev publishes one (rates in USD per 1M tokens). */
 function entry(overrides: Record<string, unknown> = {}): Record<string, unknown> {
   return {
     name: 'DeepSeek V4 Flash',
@@ -30,7 +25,6 @@ function entry(overrides: Record<string, unknown> = {}): Record<string, unknown>
   }
 }
 
-/** A one-provider, one-model book at the rates above. */
 const book: PriceBook = buildBook({
   deepseek: { models: { 'deepseek-flash': entry() } },
 })
@@ -122,23 +116,22 @@ describe('resolveRate', () => {
 
 describe('isPeak', () => {
   it('classifies Beijing-time weekday windows', () => {
-    // Asia/Shanghai is UTC+8 year round, so peak 09:00–12:00 / 14:00–18:00 CST
-    // is 01:00–04:00 and 06:00–10:00 UTC.
-    expect(isPeak(new Date('2026-10-12T01:30:00Z'))).toBe(true) // Mon 09:30
-    expect(isPeak(new Date('2026-10-12T05:00:00Z'))).toBe(false) // Mon 13:00
-    expect(isPeak(new Date('2026-10-12T06:30:00Z'))).toBe(true) // Mon 14:30
-    expect(isPeak(new Date('2026-10-12T12:00:00Z'))).toBe(false) // Mon 20:00
+
+    expect(isPeak(new Date('2026-10-12T01:30:00Z'))).toBe(true)
+    expect(isPeak(new Date('2026-10-12T05:00:00Z'))).toBe(false)
+    expect(isPeak(new Date('2026-10-12T06:30:00Z'))).toBe(true)
+    expect(isPeak(new Date('2026-10-12T12:00:00Z'))).toBe(false)
   })
 
   it('treats the whole weekend as off-peak', () => {
-    expect(isPeak(new Date('2026-10-17T02:00:00Z'))).toBe(false) // Sat 10:00
-    expect(isPeak(new Date('2026-10-11T02:00:00Z'))).toBe(false) // Sun 10:00
+    expect(isPeak(new Date('2026-10-17T02:00:00Z'))).toBe(false)
+    expect(isPeak(new Date('2026-10-11T02:00:00Z'))).toBe(false)
   })
 })
 
 describe('priceUsage', () => {
-  const offPeak = new Date('2026-10-12T12:00:00Z') // Mon 20:00 CST
-  const peak = new Date('2026-10-12T01:30:00Z') // Mon 09:30 CST
+  const offPeak = new Date('2026-10-12T12:00:00Z')
+  const peak = new Date('2026-10-12T01:30:00Z')
   const usage = {
     uncachedInputTokens: 1_000_000,
     cacheReadTokens: 2_000_000,
@@ -174,7 +167,6 @@ describe('priceUsage', () => {
     expect(priced.kind).toBe('ok')
     if (priced.kind !== 'ok') return
 
-    // 1M miss @0.14 + 2M hit @0.014 + 0.5M out @0.28 = 0.14 + 0.028 + 0.14
     const usd = 0.14 + 0.028 + 0.14
     expect(priced.totalTokens).toBe(3_500_000)
     expect(priced.peak).toBe(false)

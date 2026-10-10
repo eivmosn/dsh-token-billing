@@ -1,13 +1,8 @@
-/**
- * The Host half: the browser-trust fence on the balance route, and the route's
- * own status ladder.
- */
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { apply, inject, isTrustedRequest, name } from '../src/index.ts'
 import type { HostContext, HttpRequest, HttpResponse, WebRoute } from '../src/context-types.ts'
 
-/** A request as the shell sends it. */
 function request(overrides: Partial<HttpRequest> = {}): HttpRequest {
   return { method: 'GET', headers: { host: '127.0.0.1:19387' }, ...overrides }
 }
@@ -15,15 +10,10 @@ function request(overrides: Partial<HttpRequest> = {}): HttpRequest {
 interface HostHarness {
   route: () => WebRoute
   label: () => string | undefined
-  /** How many times the credential seam was asked for the key. */
+
   reads: () => number
 }
 
-/**
- * Run `apply` against a minimal Host context and hand back the route it
- * registered.
- * @param options - the key the seam resolves, and the runtime trust list.
- */
 function harness(options: { apiKey?: string; trustedHosts?: readonly string[]; throws?: boolean } = {}): HostHarness {
   let route: WebRoute | undefined
   let label: string | undefined
@@ -70,7 +60,6 @@ function harness(options: { apiKey?: string; trustedHosts?: readonly string[]; t
   }
 }
 
-/** Capture what a route handler wrote. */
 function capture(): { res: HttpResponse; status: () => number; body: () => unknown } {
   let status = 0
   let raw = ''
@@ -88,7 +77,6 @@ function capture(): { res: HttpResponse; status: () => number; body: () => unkno
   }
 }
 
-/** Answer the next upstream call with one body. */
 function stubUpstream(payload: unknown, init: { ok?: boolean; status?: number } = {}): void {
   vi.stubGlobal('fetch', () =>
     Promise.resolve({
@@ -230,7 +218,7 @@ describe('the balance route', () => {
         },
       ],
     })
-    // The API key rides the upstream call and nothing else.
+
     expect(JSON.stringify(response.body())).not.toContain('sk-test')
   })
 })

@@ -20,15 +20,32 @@ DeepSeek Harness 插件：在输入框底部的 composer dock 行末尾追加一
 
 ```
 src/
-  index.ts           Host 半边：注册受信任围栏保护的余额路由
-  client.ts          浏览器半边：计费 chip 组件与两个共享 store
-  billing.ts         纯计费域：价格表、成本模型、时段判断、金额格式化、两侧余额报文的校验
-  context-types.ts   本插件消费的 cordis 服务面的结构化镜像（纯类型）
-  styles.ts          样式表与一次性注入
+  index.ts              Host 半边：注册受信任围栏保护的余额路由
+  billing.ts            纯计费域：价格表、成本模型、时段判断、金额格式化、两侧余额报文的校验
+  context-types.ts      本插件消费的 cordis 服务面的结构化镜像（纯类型）
+  css.d.ts              `import css from './x.css'` 的类型声明
+  client/
+    index.ts            浏览器半边入口：name / inject / apply
+    constants.ts        全部可调参数
+    billing.css         样式表（真 CSS 文件，构建期内联成注入 JS）
+    styles.ts           把上面的样式注入成一个带 data-plugin-css 的 <style>
+    stores/
+      account-balance.ts  共享的账户余额 store（Host 路由代理）
+      price-book.ts       共享的 models.dev 价格表 store
+    hooks/
+      use-count-up.ts     金额数字缓动
+      use-overlay.ts      触发器锚定的浮层位置 / Esc / 外部点击
+    components/
+      BillingChip.tsx     dock 上的 chip：pill、读数、两个 portal
+      BillingPanel.tsx    点击展开的明细面板
+      BillingHoverCard.tsx 悬停小卡片
+      BalanceValue.tsx    账户余额数值渲染
 test/
-  billing.test.ts    纯计费域
-  host.test.ts       信任围栏与路由状态阶梯
-  bundle.test.ts     构建产物：ModuleLoader 契约、外部依赖、slot 注册、SSR 冒烟渲染
+  billing.test.ts       纯计费域
+  host.test.ts          信任围栏与路由状态阶梯
+  panel.test.tsx        面板 / 悬停卡片各状态（直接渲染组件）
+  bundle.test.ts        构建产物：ModuleLoader 契约、外部依赖、CSS 内联、slot 注册、SSR 冒烟渲染
+  stubs/                vitest 用的 primitives 替身
 ```
 
 产物（`pnpm build`，均不入库）：
@@ -53,7 +70,7 @@ pnpm test         # vitest run（需先 build，bundle 测试读 lib/）
 pnpm check        # typecheck → lint → build → test
 ```
 
-技术栈：**TypeScript**（全程 `.ts`，无 JS 源文件）、**tsdown**（rolldown）+ 类型声明生成、**oxlint**、**vitest**。
+技术栈：**TypeScript**（逻辑 `.ts`、UI `.tsx`，无 JS 源文件）、**tsdown**（rolldown）+ 类型声明生成、**oxlint**、**vitest**。
 
 ## 构建契约
 
@@ -67,9 +84,24 @@ pnpm check        # typecheck → lint → build → test
   window.__ModuleLoader__.load({ id: 'dsh-token-billing', factory: (require) => { /* … */ } })
   ```
 
-  因此产物以 CJS 产出，并把 `react`、`react-dom`、`@deepseek-ai/dsh-client-ui-primitives` 保持为外部 `require`——这三个是 shell 预置进冻结模块表的平台模块，`tsdown.config.ts` 的 `CLIENT_PLATFORM_MODULES` 与它们一一对应，其余 import 一律内联。工厂外壳由 `outputOptions` 的 `banner` / `intro` / `footer` 拼出。
+  因此产物以 CJS 产出，并把 `react`、`react/jsx-runtime`、`react-dom`、`@deepseek-ai/dsh-client-ui-primitives` 保持为外部 `require`——这四个是 shell 预置进冻结模块表的平台模块（即 `dsh.client.external` 意义上的基线），`tsdown.config.ts` 的 `CLIENT_PLATFORM_MODULES` 与它们一一对应，其余 import 一律内联。工厂外壳由 `outputOptions` 的 `banner` / `intro` / `footer` 拼出。
 
-  一个模块表回答不了的 `require` 必然在工厂实例化时抛错，所以 `test/bundle.test.ts` 会执行 `lib/client.js` 并断言它只请求这三个 specifier。
+  一个模块表回答不了的 `require` 必然在工厂实例化时抛错，所以 `test/bundle.test.ts` 会执行 `lib/client.js` 并断言它只请求这四个 specifier。
+
+## 样式为什么要过构建期
+
+浏览器模块表只执行 JS，CSS 不会作为模块被加载——DSH 自己发布的所有 client bundle 里没有任何 `require("*.css")`，样式一律以 JS 形式注入 `<style>`。
+
+但源码层面可以直接 import CSS 文件。`tsdown.config.ts` 里的 `cssTextPlugin` 把 `*.css` 解析成一个虚拟模块，把文件内容作为字符串 default 导出（虚拟 id 刻意不以 `.css` 结尾，避开 tsdown 自己的 CSS 管线）。于是：
+
+```ts
+import css from './billing.css'   // src/client/styles.ts
+tag.textContent = css
+```
+
+好处是样式写在真正的 `.css` 文件里（编辑器高亮 / lint / 格式化），产物里依旧不会有 CSS 模块请求。官方 `packages/client/tsdown.client.ts` 走的是同一条思路，只是多了 lightningcss（CSS Modules 哈希类名、压缩）与 Tailwind；这里不需要，所以没引依赖。
+
+样式注入本身挂在 `apply` 的 `ctx.effect` 上并返回清理函数，符合官方 `references/ui-plugin.md` 对资源注册的要求。
 
 ## 安装到 DSH profile
 
@@ -86,10 +118,13 @@ pnpm build
 
 ## 与旧版单文件实现的差异
 
-行为保持一致，DOM 契约（`tb-*` 类名、`data-token-billing*` 属性、`order:9999` 定位）逐个对齐，并补齐了：
+行为保持一致：三个可达渲染状态（无用量 / 价格表未就绪 / 运行中）的 SSR 产物与改造前**逐字节相同**，DOM 契约（`tb-*` 类名、`data-token-billing*` 属性、`order:9999` 定位）逐个对齐。结构上做了：
 
-- **类型**：两侧全部 TS，Host 半边产出 `.d.ts`；`react` / `react-dom` / primitives 用真实类型，Host 服务面用结构化镜像。
-- **可测试**：原先埋在 1400 行里的纯逻辑（价格表构建、成本模型、时段判断、金额格式化、上下游报文校验）抽到 `billing.ts`，两侧共用并有直接测试。
-- **清理**：删掉从未被读到的 `MIN_DISPLAY` 与 `formatTokens`；`priceBook` 的 `dispose()` 现在真的挂在 teardown 上（停止重试链，并允许重新激活时重新拉取）。
+- **模块化**：原先的单文件拆成 `src/client/` 下的入口、两个 store、两个 hook、四个组件，加根部的纯计费域与 Host 半边。
+- **JSX**：UI 用 `.tsx` + JSX，与官方客户端构建链一致（因此多一个基线外部依赖 `react/jsx-runtime`）。
+- **真 CSS 文件**：样式从 TS 字符串数组变成 `src/client/billing.css`，由构建期转成注入 JS。
+- **类型**：两侧全覆盖 TS，Host 半边产出 `.d.ts`；`react` / `react-dom` / primitives 用真实类型，Host 服务面用结构化镜像。
+- **可测试**：原先埋在 1400 行里的纯逻辑（价格表构建、成本模型、时段判断、金额格式化、上下游报文校验）抽到 `billing.ts`，两侧共用并有直接测试；面板与悬停卡片另按组件直接测。
+- **清理**：删掉从未被读到的 `MIN_DISPLAY` 与 `formatTokens`；`priceBook` 的 `dispose()` 现在真的挂在 teardown 上（停止重试链，并允许重新激活时重新拉取）；删掉了源码里全部注释。
 - **两处修正**：上游响应体大小限制原先按字符数比较却叫 `MAX_BODY_BYTES`，改为按 UTF-8 字节数；余额读取里 `status === 403 ? 'error' : 'error'` 的冗余三元去掉。
-- **一处简化**：`react-dom` 与 primitives 的成员改为静态 import。旧代码用 `try/catch` 包裹 `require('react-dom')` 以防缺失，但这三个 specifier 由 shell 冻结模块表保证，静态 import 让整条降级分支成为死代码。
+- **一处简化**：`react-dom` 与 primitives 的成员改为静态 import。旧代码用 `try/catch` 包裹 `require('react-dom')` 以防缺失，但这两个 specifier 由 shell 冻结模块表保证，静态 import 让整条降级分支成为死代码。
