@@ -7,10 +7,13 @@ import { insertStyles } from './styles.ts'
 
 export const name = 'dsh-token-billing'
 
-export const inject = ['slots']
+export const inject = ['slots', 'locale']
 
 export function apply(ctx: ClientContext): void {
-  bindLocale(ctx.get?.('locale'))
+  ctx.effect(
+    () => bindLocale(ctx.locale ?? ctx.get?.('locale')),
+    'dsh-token-billing: dictionaries',
+  )
 
   const disposeStyles = insertStyles()
   ctx.effect(() => disposeStyles, 'dsh-token-billing: styles')

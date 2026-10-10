@@ -98,7 +98,7 @@ describe.skipIf(!built)('the built artifacts', () => {
   it('materializes into the cordis plugin face', () => {
     const { module } = materialize()
     expect(module.name).toBe('dsh-token-billing')
-    expect(module.inject).toEqual(['slots'])
+    expect(module.inject).toEqual(['slots', 'locale'])
     expect(typeof module.apply).toBe('function')
   })
 

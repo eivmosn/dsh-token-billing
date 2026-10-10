@@ -67,6 +67,7 @@ export interface SlotsService {
 
 export interface ClientContext extends EffectScope {
   slots: SlotsService
+  locale?: unknown
   get?: (name: string) => unknown
 }
 
