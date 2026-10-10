@@ -146,6 +146,39 @@ pnpm build
 - **两处修正**：上游响应体大小限制原先按字符数比较却叫 `MAX_BODY_BYTES`，改为按 UTF-8 字节数；余额读取里 `status === 403 ? 'error' : 'error'` 的冗余三元去掉。
 - **一处简化**：`react-dom` 与 primitives 的成员改为静态 import。旧代码用 `try/catch` 包裹 `require('react-dom')` 以防缺失，但这两个 specifier 由 shell 冻结模块表保证，静态 import 让整条降级分支成为死代码。
 
+## 成本模型
+
+**DSH 内核没有任何成本概念**，也从不引用 models.dev；唯一的 token 数据源是 `dsh-token-meter` 注册的 `tokenUsage` 投影 —— **每个 session 一份、扁平四桶**（`uncachedInputTokens` / `cacheReadTokens` / `cacheWriteTokens` / `outputTokens`），既不带模型维度，也不跨会话聚合。所以价格表必须完全由本插件自带。
+
+### 怎么算
+
+1. 当前会话 `tokenUsage` 取四桶，`modelSelection` 取它自己的路由；
+2. 子智能体 / teammate 是**独立的 session**（`childSessionMeta` 把 `parentSession` 写进子会话 header），父会话的 `tokenUsage` **不包含**它们 —— 所以沿 `byId[].parentId` 走完整棵后代树，逐个取出各自的 `tokenUsage` 与 `modelSelection`；
+3. 每个 session 按**它自己的路由**计价，再求和；还没上报用量的后代会计数并在面板里标为「未上报」，不静默丢弃；
+4. 明细按金额降序列出花费最高的 12 个 agent，超出部分只报数量。
+
+### 已知误差
+
+| 来源 | 影响 | 现状 |
+| --- | --- | --- |
+| 漏算子智能体 | 可达数倍到数十倍（低估） | **已修**：整棵树按各自路由计价 |
+| 子智能体用了别的模型 | 按主会话单价算是错的 | **已修**：按各自 `modelSelection` 计价 |
+| 同一会话中途换模型 | 该会话全部 token 按最后的路由算 | 未修 |
+| 峰谷时段 | 整段按渲染当下的时段算，上限 2× | 未修 |
+
+后两项需要**逐请求归因**：`dsh-context` 的做法是在 Host 侧注册自己的 session projection（`ctx.sessionProjections.register({key, stateVersion, stateSchema, init, apply, wire})`），把事件流增量折叠成 `provider → model → period` 三层记录，峰谷取 `step/start` 那个瞬间而非渲染时刻。本插件没走这条路 —— 它会引入 zod 依赖（本插件目前**零运行时依赖**），且要耦合逐事件类型契约；代价与收益在 README 之外单独评估。
+
+### 性能
+
+对着真实注册表（226 provider / 7998 模型）实测：
+
+| 项 | 改前 | 改后 |
+| --- | --- | --- |
+| `resolveRate` 最坏情况（价格表里没有该路由） | 224.7 µs | **0.057 µs**（≈3900×，且不再随注册表规模变化） |
+| 重复加载 | 5.4 MB 下载 + 19.3 ms `JSON.parse` + 3.6 ms 建表 | 命中 772 KB 缓存后 **≈5 ms 直接出数** |
+
+`buildBook` 额外产出两个小写索引（provider → 真实拼写、model → 首个命中位置），把原先的线性扫描降为常数查找；实测真实注册表 226 个 provider id 无大小写冲突，索引与线性扫描语义等价（测试覆盖「首个命中优先」的次序）。构建后的价格表按 24 小时 TTL 存 localStorage，过期时先用旧表出数、后台再拉。
+
 ## UI 迭代
 
 hover 卡片与明细面板按「点阵 + 分层表面 + 连续圆角」重做；chip 本体未动（它要留在 dock 行的 flow 里）。
