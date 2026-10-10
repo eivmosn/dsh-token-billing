@@ -4,6 +4,7 @@ import {
   formatBalance,
   formatCost,
   formatExactTokens,
+  formatTokens,
   formatRate,
   buildBook,
   emptyBook,
@@ -556,5 +557,15 @@ describe('subtractBuckets', () => {
   it('treats a missing bucket on either side as zero', () => {
     expect(subtractBuckets({ outputTokens: 5 }, {})).toEqual({ outputTokens: 5 })
     expect(subtractBuckets({}, { outputTokens: 5 })).toEqual({})
+  })
+})
+
+describe('formatTokens', () => {
+  it('keeps a dock cell readable', () => {
+    expect(formatTokens(838)).toBe('838')
+    expect(formatTokens(1_240)).toBe('1.2K')
+    expect(formatTokens(594_860)).toBe('595K')
+    expect(formatTokens(5_351_837)).toBe('5.4M')
+    expect(formatTokens(2_400_000_000)).toBe('2.4B')
   })
 })

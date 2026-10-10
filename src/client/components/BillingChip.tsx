@@ -5,7 +5,7 @@ import { createPortal } from 'react-dom'
 import {
   formatBalance,
   formatCost,
-  formatExactTokens,
+  formatTokens,
   priceSessionTree,
   priceUsage,
   subtractBuckets,
@@ -157,7 +157,7 @@ export function BillingChip({
             ·
           </span>
           <span className="tb-turn" data-token-billing-turn="">
-            {`${t('chip.turnTokens', { tokens: formatExactTokens(turn.tokens) })} ${t('chip.turnCost', { cost: formatCost(animatedTurnCny) })}`}
+            {`${t('chip.turnTokens', { tokens: formatTokens(turn.tokens) })} ${t('chip.turnCost', { cost: formatCost(animatedTurnCny) })}`}
           </span>
         </>
       )}
