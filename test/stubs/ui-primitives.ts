@@ -23,3 +23,7 @@ export const IconDataOutlineRegular: ComponentType<Record<string, unknown>> = ()
     createElement('path', { d: 'M2.8 8c0 1.16 2.33 2.1 5.2 2.1s5.2-.94 5.2-2.1' }),
   )
 
+
+export function Tooltip({ children }: { children: ReactElement }): ReactElement {
+  return children
+}
