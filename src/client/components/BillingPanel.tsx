@@ -218,8 +218,8 @@ export function BillingPanel({
                 </dt>
                 <dd data-token-billing-agents={agents.count}>
                   {agents.unreported > 0
-                    ? `${t('panel.agentsCount', { count: agents.count, cost: formatCost(agents.cny) })}${t('panel.agentsUnreported', { count: agents.unreported })}`
-                    : t('panel.agentsCount', { count: agents.count, cost: formatCost(agents.cny) })}
+                    ? `${t('panel.agentsCount', { count: agents.count, tokens: formatExactTokens(agents.tokens), cost: formatCost(agents.cny) })}${t('panel.agentsUnreported', { count: agents.unreported })}`
+                    : t('panel.agentsCount', { count: agents.count, tokens: formatExactTokens(agents.tokens), cost: formatCost(agents.cny) })}
                 </dd>
               </div>
             )}

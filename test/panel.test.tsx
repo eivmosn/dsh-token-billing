@@ -51,6 +51,7 @@ const emptyRef: RefObject<HTMLDivElement | null> = { current: null }
 const agents: AgentUsage = {
   count: 2,
   cny: 0.727,
+  tokens: 2_000_000,
   unreported: 0,
   items: [
     {
@@ -141,7 +142,7 @@ describe('BillingPanel', () => {
 
     expect(html).toContain('<span class="tb-titleValue">¥2.78</span>')
     expect(html).not.toContain('<span class="tb-titleValue">¥2.05</span>')
-    expect(html).toContain('2 个 · ¥0.727')
+    expect(html).toContain('2 个 · 2,000,000 · ¥0.727')
   })
 
   it('explains each unpriced state instead of showing a figure', () => {
@@ -262,12 +263,12 @@ describe('BillingPanel subagents', () => {
   })
 
   it('leaves the row inert when no descendant reported usage', () => {
-    const silent: AgentUsage = { ...agents, count: 3, cny: 0, items: [], overflow: 0 }
+    const silent: AgentUsage = { ...agents, count: 3, cny: 0, tokens: 0, items: [], overflow: 0 }
     const html = panel(priced, { agents: silent })
 
     expect(html).not.toContain('data-token-billing-agents-toggle')
     expect(html).toContain('data-token-billing-agents="3"')
-    expect(html).toContain('3 个 · ¥0.0')
+    expect(html).toContain('3 个 · 0 · ¥0.0')
   })
 })
 

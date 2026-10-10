@@ -183,6 +183,13 @@ describe('pricing one turn', () => {
     expect(spend?.cny).toBeCloseTo(2 + 0.5, 6)
   })
 
+  it('says nothing while a turn has spent nothing', () => {
+    expect(
+      attributeTurn([], book, opened, { uncachedInputTokens: 0 }, fallback),
+    ).toBeUndefined()
+    expect(attributeTurn([], book, opened, {}, fallback)).toBeUndefined()
+  })
+
   it('says nothing when there is no book to price with', () => {
     expect(attributeTurn([], emptyBook(), opened, { uncachedInputTokens: 10 }, fallback)).toBeUndefined()
   })

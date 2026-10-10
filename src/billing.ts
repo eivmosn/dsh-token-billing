@@ -346,6 +346,7 @@ export interface AgentSpend {
 export interface AgentRollup {
   count: number
   cny: number
+  tokens: number
   items: AgentSpend[]
   overflow: number
 }
@@ -372,6 +373,7 @@ export function priceSessionTree(
   let priced = 0
   let agentCount = 0
   let agentCny = 0
+  let agentTokens = 0
   const agentItems: AgentSpend[] = []
 
   for (let index = 0; index < sources.length; index += 1) {
@@ -387,6 +389,7 @@ export function priceSessionTree(
     {
       agentCount += 1
       agentCny += result.totalCny
+      agentTokens += result.totalTokens
       agentItems.push({
         id: source.sessionId ?? `agent-${String(index)}`,
         label: source.label ?? result.modelName,
@@ -432,6 +435,7 @@ export function priceSessionTree(
     agents: {
       count: agentCount,
       cny: agentCny,
+      tokens: agentTokens,
       items: agentItems.toSorted((left, right) => right.cny - left.cny).slice(0, MAX_AGENT_ITEMS),
       overflow: Math.max(0, agentCount - MAX_AGENT_ITEMS),
     },

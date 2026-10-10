@@ -55,6 +55,7 @@ const ROOT_CNY = priced.kind === 'ok' ? priced.totalCny : 0
 const AGENTS: AgentUsage = {
   count: 2,
   cny: 0.727,
+  tokens: 2_000_000,
   unreported: 0,
   items: [
     {

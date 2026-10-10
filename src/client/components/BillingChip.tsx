@@ -176,19 +176,7 @@ export function BillingChip({
   const rootTokens = attributed?.totalTokens ?? (priced.kind === 'ok' ? priced.totalTokens : 0)
   const totalCny = rootCny + (priced.kind === 'ok' ? (tree?.totalCny ?? 0) : 0)
   const totalTokens = rootTokens + (priced.kind === 'ok' ? (tree?.totalTokens ?? 0) : 0)
-  const agentRow =
-    tree !== null && tree.totalTokens > 0
-      ? [
-          {
-            key: 'subagents',
-            label: t('panel.agents'),
-            tokens: tree.totalTokens,
-            usd: tree.totalCny * USD_PER_CNY,
-            rate: (tree.totalCny * USD_PER_CNY * 1_000_000) / tree.totalTokens,
-          },
-        ]
-      : []
-  const rows = priced.kind === 'ok' ? [...(attributed?.rows ?? priced.rows), ...agentRow] : []
+  const rows = priced.kind === 'ok' ? (attributed?.rows ?? priced.rows) : []
   const agents =
     priced.kind === 'ok' && tree !== null
       ? { ...tree.agents, unreported: descendants.unreported }

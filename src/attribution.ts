@@ -215,8 +215,11 @@ export function attributeTurn(
       ? priceUsage(rest, book, fallback.provider, fallback.model, fallback.at)
       : undefined
 
+  const tokens = run.totalTokens + (restPriced?.kind === 'ok' ? restPriced.totalTokens : 0)
+  if (tokens === 0) return undefined
+
   return {
-    tokens: run.totalTokens + (restPriced?.kind === 'ok' ? restPriced.totalTokens : 0),
+    tokens,
     cny: run.totalCny + (restPriced?.kind === 'ok' ? restPriced.totalCny : 0),
   }
 }
