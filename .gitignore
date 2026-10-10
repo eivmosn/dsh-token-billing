@@ -6,3 +6,4 @@ coverage/
 .pnpm-store
 preview/out.html
 preview/*.png
+*.tgz

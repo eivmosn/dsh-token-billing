@@ -120,15 +120,66 @@ tag.textContent = css
 
 样式注入本身挂在 `apply` 的 `ctx.effect` 上并返回清理函数，符合官方 `references/ui-plugin.md` 对资源注册的要求。
 
+## 分发
+
+`dsh plugin <参数>` 只是把参数透传给 profile 目录里的 pnpm（DSH 源码原话：*all other arguments remain pnpm's responsibility*），所以**任何 pnpm 认的 spec 都能装**。DSH 自己预解析 spec 的实现在 `@deepseek-ai/dsh-plugin-manager` 的 `install-spec.js`，它只接受四种形式：
+
+| 形式 | 例子 | 用户机器要编译吗 |
+| --- | --- | --- |
+| 注册表包名 | `dsh-token-billing` | 否，包里带 `lib/` |
+| 仓库地址 | `github:you/dsh-token-billing` · `https://github.com/you/dsh-token-billing` | **要**，见下 |
+| tarball | `./dsh-token-billing-0.2.1.tgz` · `https://…/dsh-token-billing-0.2.1.tgz` | 否，包里带 `lib/` |
+| 本地绝对路径 | `file:/abs/path` · `link:/abs/path` | 否，但只适合开发 |
+
+`files` 字段是 `["lib", "cordis.patch.yml", "README.md"]`，`prepare` 是 `tsdown` —— 所以 `pnpm pack` / `npm publish` 产出的包里**已经含构建产物**（实测 45 KB），装它不触发任何编译。
+
+### 走仓库地址（不发包）
+
+可以，但 pnpm 的构建脚本默认被拦：git 依赖要靠 `prepare` 才会生成 `lib/`，而 pnpm 会先阻断它。DSH 的 CLI 会直接把这个提示打出来：
+
+```
+dsh: git-hosted plugins build on install via their prepare script, which pnpm
+blocks until allowed — add the exact key pnpm printed above under allowBuilds
+in <profile>/pnpm-workspace.yaml, then re-run
+```
+
+把 pnpm 打印的那个 key 加到 `~/.dsh/profiles/<profile>/pnpm-workspace.yaml` 的 `allowBuilds` 下再重跑即可（本机 profile 里已有一个这样的实例，来自社区插件 `dsh-tool-plus`）。代价是用户要装一遍 devDependencies（typescript / tsdown 等）并本机编译。
+
+### 推荐：Release 挂 tarball
+
+避开注册表、又避开编译的办法是把 `pnpm pack` 的产物挂到 GitHub Release：
+
+```bash
+pnpm pack                       # 产出 dsh-token-billing-<version>.tgz
+dsh plugin add https://github.com/you/dsh-token-billing/releases/download/v0.2.1/dsh-token-billing-0.2.1.tgz
+```
+
+tarball 里已是构建产物，所以不触发 `prepare`、不需要 `allowBuilds`、也不需要 npm 账号。
+
+### 发到 npm
+
+```bash
+npm publish --access public
+```
+
+`prepare` 会在 publish 前自动跑一遍 `tsdown`，`files` 决定只带 `lib/`、`cordis.patch.yml`、`README.md`。名字 `dsh-token-billing` 在 npm 上未被占用（2026-10 实测 404）。
+
+### 兼容性是怎么被检查的
+
+安装时真正强制的只有一条（`@deepseek-ai/dsh-app-boot` 的 `evaluatePluginCompatibility`）：**peerDependencies 里名字为 `@deepseek-ai/dsh` 或以 `@deepseek-ai/dsh-` 开头的项，会被拿去和 DSH 运行时版本比对**，不满足就整包拒绝安装，用户必须 `dsh plugin allow-version` 显式接受风险。其余 peer（`react`、`@deepseek-ai/cordis`）不参与检查。
+
+所以 `@deepseek-ai/dsh-client-ui-primitives` 声明成开放区间 `>=0.2.0-rc.2`（与已发布的 `dsh-context` 同样取向）而不是封顶区间：封顶写法在运行时升到 `0.3.0` 正式版时会让插件被直接拒绝安装。
+
+`dsh.manifestVersion` 与 `engines.dsh` 都只是**声明性**的，规范明说 *current installers and loaders do not enforce* —— 留着是为了表达意图，不构成约束。
+
 ## 安装到 DSH profile
 
-构建后把包安装进 profile（例如 `desktop`）：
+开发时用本地 link，改完立刻生效、无需重装：
 
 ```bash
 pnpm build
-# 然后在 DSH 里通过插件管理器安装本目录，或
-#   把本目录（含 lib/、cordis.patch.yml、package.json）复制到
-#   ~/.dsh/profiles/<profile>/node_modules/dsh-token-billing
+# 然后在插件管理器里安装本目录，或直接把 profile 的依赖指向本目录：
+#   "dsh-token-billing": "link:/abs/path/to/dsh-token-billing"
 ```
 
 `cordis.patch.yml` 按包名引用插件；`package.json` 的 `dsh.client` 声明让 web 端额外加载 `lib/client.js` 作为浏览器半边。
