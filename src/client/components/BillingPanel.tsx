@@ -1,16 +1,11 @@
 import { IconDataOutlineRegular } from '@deepseek-ai/dsh-client-ui-primitives'
-import type { CSSProperties, ReactNode } from 'react'
+import { useId, useState, type CSSProperties, type ReactNode } from 'react'
 
-import {
-  formatCost,
-  formatExactTokens,
-  formatRate,
-  toCny,
-  type PriceResult,
-} from '../../billing.ts'
+import { formatCost, formatExactTokens, toCny, type PriceResult } from '../../billing.ts'
 import type { PanelRef } from '../hooks/use-overlay.ts'
 import type { BalanceState } from '../stores/account-balance.ts'
 import { BalanceValue } from './BalanceValue.tsx'
+import { UnitRatesCard } from './UnitRatesCard.tsx'
 
 export interface BillingPanelProps {
   priced: PriceResult
@@ -19,14 +14,23 @@ export interface BillingPanelProps {
   headline: string
   panelRef: PanelRef
   style: CSSProperties
+  defaultRatesOpen?: boolean
 }
 
-function Row({ label, value }: { label: string; value: string }): ReactNode {
+function Chevron(): ReactNode {
   return (
-    <>
-      <dt>{label}</dt>
-      <dd>{value}</dd>
-    </>
+    <svg
+      className="tb-rateToggleChevron"
+      width="12"
+      height="12"
+      viewBox="0 0 12 12"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.4"
+      aria-hidden="true"
+    >
+      <path d="M3 4.5 6 7.5 9 4.5" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
   )
 }
 
@@ -37,7 +41,11 @@ export function BillingPanel({
   headline,
   panelRef,
   style,
+  defaultRatesOpen = false,
 }: BillingPanelProps): ReactNode {
+  const [ratesOpen, setRatesOpen] = useState(defaultRatesOpen)
+  const ratesId = useId()
+
   return (
     <div
       ref={panelRef}
@@ -58,22 +66,43 @@ export function BillingPanel({
       <div className="tb-titleRule" aria-hidden />
 
       {priced.kind === 'ok' && (
-        <dl className="tb-details" data-token-billing-details>
-          <dt>模型</dt>
-          <dd data-token-billing-model="">{priced.modelName}</dd>
-          {priced.rows.flatMap((row) =>
-            row.tokens === 0
-              ? []
-              : [
-                  <dt key={`${row.key}-l`}>{row.label}</dt>,
-                  <dd key={`${row.key}-v`}>
-                    {`${formatExactTokens(row.tokens)} · ${formatCost(toCny(row.usd))}`}
-                  </dd>,
-                ],
-          )}
-          <dt>合计 token</dt>
-          <dd>{formatExactTokens(priced.totalTokens)}</dd>
-        </dl>
+        <>
+          <dl className="tb-details" data-token-billing-details>
+            <dt>模型</dt>
+            <dd data-token-billing-model="">{priced.modelName}</dd>
+            {priced.rows.flatMap((row) =>
+              row.tokens === 0
+                ? []
+                : [
+                    <dt key={`${row.key}-l`}>{row.label}</dt>,
+                    <dd key={`${row.key}-v`}>
+                      {`${formatExactTokens(row.tokens)} · ${formatCost(toCny(row.usd))}`}
+                    </dd>,
+                  ],
+            )}
+            <dt>合计 token</dt>
+            <dd>{formatExactTokens(priced.totalTokens)}</dd>
+          </dl>
+
+          <button
+            type="button"
+            className="tb-rateToggle"
+            aria-expanded={ratesOpen}
+            aria-controls={ratesId}
+            data-token-billing-rates-toggle
+            onClick={() => setRatesOpen(!ratesOpen)}
+          >
+            <span className="tb-rateToggleLabel">每百万 token 单价</span>
+            <span className="tb-rateToggleHint">{priced.peak ? '高峰' : '低谷'}</span>
+            <Chevron />
+          </button>
+
+          <div className="tb-rateReveal" data-open={ratesOpen} id={ratesId}>
+            <div className="tb-rateRevealInner">
+              <UnitRatesCard rate={priced.rate} peak={priced.peak} />
+            </div>
+          </div>
+        </>
       )}
 
       {priced.kind === 'no-book' && <div className="tb-note">正在获取价格表，稍后自动重试。</div>}
@@ -83,23 +112,6 @@ export function BillingPanel({
       )}
 
       {priced.kind === 'no-route' && <div className="tb-note">尚未确定当前模型。</div>}
-
-      {priced.kind === 'ok' && (
-        <div className="tb-group">
-          <div className="tb-section">每百万 token 单价</div>
-          <dl className="tb-details">
-            <Row label="未缓存输入" value={formatRate(toCny(priced.rate.miss))} />
-            <Row label="缓存读取" value={formatRate(toCny(priced.rate.hit))} />
-            <Row label="缓存写入" value={formatRate(toCny(priced.rate.write))} />
-            <Row label="输出" value={formatRate(toCny(priced.rate.out))} />
-          </dl>
-          <div className="tb-note">
-            {priced.peak
-              ? '当前为高峰时段，已按挂牌价 ×2 计（低谷为半价）。'
-              : '当前为低谷时段，按半价计（高峰为挂牌价 ×2）。'}
-          </div>
-        </div>
-      )}
 
       <div className="tb-balanceRow" data-token-billing-balance>
         <span className="tb-balanceLabel">账户余额</span>

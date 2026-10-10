@@ -1,6 +1,6 @@
 # dsh-token-billing
 
-DeepSeek Harness 插件：在输入框底部的 composer dock 行末尾追加一个实时计费 chip，显示本会话的预估费用（¥）。悬停显示金额与计价依据，点击展开明细面板（各计费桶的 token 与金额、每百万 token 单价、高峰/低谷时段、账户余额）。
+DeepSeek Harness 插件：在输入框底部的 composer dock 行末尾追加一个实时计费 chip，显示本会话的预估费用（¥）。悬停显示金额与计价依据，点击展开明细面板（各计费桶的 token 与金额、账户余额，单价另由一个按钮展开成独立卡片）。
 
 费用是**估算**：DSH 本身没有计费概念，本插件把 Host 上报的精确 token 桶按 models.dev 公开挂牌价折算，不是账单。
 
@@ -13,6 +13,8 @@ DeepSeek Harness 插件：在输入框底部的 composer dock 行末尾追加一
 | 该模型无挂牌价 | `¥ ?` |
 | 正常 | `¥0.42`，超过 ¥5 转为红色 |
 | 会话运行中 | 金额后追加脉冲点与已运行秒数 |
+
+明细面板默认只显示计费桶与账户余额；「每百万 token 单价」默认收起，点按钮才展开成一张带点阵纹理的小卡片（含高峰/低谷说明与折算口径）。
 
 账户余额走 Host 半边的 `/plugins/dsh-token-billing/balance` 路由：API key 存在 Host 凭据库里，浏览器永远读不到，因此由 Host 代为调用官方 `user/balance` 接口，只把数字交给浏览器。
 
@@ -39,13 +41,17 @@ src/
       BillingChip.tsx     dock 上的 chip：pill、读数、两个 portal
       BillingPanel.tsx    点击展开的明细面板
       BillingHoverCard.tsx 悬停小卡片
+      UnitRatesCard.tsx   每百万 token 单价卡片（面板内可折叠）
       BalanceValue.tsx    账户余额数值渲染
 test/
   billing.test.ts       纯计费域
   host.test.ts          信任围栏与路由状态阶梯
-  panel.test.tsx        面板 / 悬停卡片各状态（直接渲染组件）
+  panel.test.tsx        面板 / 悬停卡片 / 单价卡片各状态（直接渲染组件）
   bundle.test.ts        构建产物：ModuleLoader 契约、外部依赖、CSS 内联、slot 注册、SSR 冒烟渲染
   stubs/                vitest 用的 primitives 替身
+preview/
+  render.spec.tsx       把各状态渲染成一张预览页（明/暗两套真实 token 值）
+  shot.sh               预览页 + 无头 Chrome 截图
 ```
 
 产物（`pnpm build`，均不入库）：
@@ -67,8 +73,19 @@ pnpm typecheck    # tsc --noEmit
 pnpm lint         # oxlint
 pnpm lint:fix
 pnpm test         # vitest run（需先 build，bundle 测试读 lib/）
+pnpm preview      # 渲染预览页并截图到 preview/panel.png（明/暗两套）
 pnpm check        # typecheck → lint → build → test
 ```
+
+## 视觉
+
+样式只引用 `--dsw-alias-*` / `--dsw-*` 主题 token，明暗主题自动跟随；动效在 `prefers-reduced-motion` 下关闭。
+
+- **点阵背景**：`radial-gradient(dot 1px, transparent 1.5px)` + `background-size` 铺成网格，再用 `mask-image` 做渐隐，只落在面板/卡片上，chip 本体保持干净。
+- **分层表面**：面板是「顶部微高光渐变 + 菜单底色 + 顶边 1px 渐隐亮线」，配 `--dsw-elevation-prominent` 的描边阴影；标题下的分隔线也是渐隐的。
+- **连续圆角**：`corner-shape: superellipse(1.25)`（`@supports` 内，不支持则退回普通圆角）。
+- **折叠动效**：用 `grid-template-rows: 0fr → 1fr` 做无需魔法数字的高度动画；收起时同时 `visibility: hidden`，所以收起状态对读屏与 Tab 序也是隐藏的。
+- 颜色深浅用 `color-mix(in srgb, var(--dsw-alias-label-primary) N%, transparent)`，不引入任何写死的色值。
 
 技术栈：**TypeScript**（逻辑 `.ts`、UI `.tsx`，无 JS 源文件）、**tsdown**（rolldown）+ 类型声明生成、**oxlint**、**vitest**。
 
@@ -128,3 +145,12 @@ pnpm build
 - **清理**：删掉从未被读到的 `MIN_DISPLAY` 与 `formatTokens`；`priceBook` 的 `dispose()` 现在真的挂在 teardown 上（停止重试链，并允许重新激活时重新拉取）；删掉了源码里全部注释。
 - **两处修正**：上游响应体大小限制原先按字符数比较却叫 `MAX_BODY_BYTES`，改为按 UTF-8 字节数；余额读取里 `status === 403 ? 'error' : 'error'` 的冗余三元去掉。
 - **一处简化**：`react-dom` 与 primitives 的成员改为静态 import。旧代码用 `try/catch` 包裹 `require('react-dom')` 以防缺失，但这两个 specifier 由 shell 冻结模块表保证，静态 import 让整条降级分支成为死代码。
+
+## UI 迭代
+
+hover 卡片与明细面板按「点阵 + 分层表面 + 连续圆角」重做；chip 本体未动（它要留在 dock 行的 flow 里）。
+
+- 单价从「面板里第四段常驻内容」改成**默认收起**的独立卡片 —— 原先四个桶在明细和单价里各出现一次，信息重复。
+- 原先的 `.tb-section` / `.tb-group` 两个 class 随旧结构一起删除。
+- 曾试过一版「按金额占比的堆叠条」，但真实数据下比例极端（92M 未缓存 vs 8.4M 输出），视觉上读作一条杂线而非图表，故撤掉。
+- `pnpm preview` 会把各状态渲染成一张明/暗对照页并截图，用于在没有真实页面的情况下比对改动。

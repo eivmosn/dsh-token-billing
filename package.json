@@ -25,6 +25,7 @@
   "scripts": {
     "build": "tsdown",
     "dev": "tsdown --watch",
+    "preview": "bash preview/shot.sh",
     "lint": "oxlint",
     "lint:fix": "oxlint --fix",
     "typecheck": "tsc --noEmit",

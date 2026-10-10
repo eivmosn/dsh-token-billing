@@ -6,6 +6,7 @@ import { buildBook, priceUsage, type PriceResult } from '../src/billing.ts'
 import type { BalanceState } from '../src/client/stores/account-balance.ts'
 import { BillingHoverCard } from '../src/client/components/BillingHoverCard.tsx'
 import { BillingPanel } from '../src/client/components/BillingPanel.tsx'
+import { UnitRatesCard } from '../src/client/components/UnitRatesCard.tsx'
 
 const OFF_PEAK = new Date('2026-10-12T12:00:00Z')
 const PEAK = new Date('2026-10-12T01:30:00Z')
@@ -28,6 +29,9 @@ const usage = {
   outputTokens: 500_000,
 }
 
+const priced = priceUsage(usage, book, 'deepseek', 'deepseek-flash', OFF_PEAK)
+const peakPriced = priceUsage(usage, book, 'deepseek', 'deepseek-flash', PEAK)
+
 const balance: BalanceState = {
   status: 'ready',
   wallets: [{ currency: 'CNY', balance: '42.50' }],
@@ -38,22 +42,23 @@ const balance: BalanceState = {
 
 const emptyRef: RefObject<HTMLDivElement | null> = { current: null }
 
-function panel(priced: PriceResult, overThreshold = false): string {
+function panel(p: PriceResult, opts: { over?: boolean; open?: boolean } = {}): string {
   return renderToStaticMarkup(
     createElement(BillingPanel, {
-      priced,
+      priced: p,
       balance,
-      overThreshold,
+      overThreshold: opts.over ?? false,
       headline: '¥ —',
       panelRef: emptyRef,
       style: {},
+      defaultRatesOpen: opts.open ?? false,
     }),
   )
 }
 
 describe('BillingPanel', () => {
-  it('breaks a priced session down by bucket, rate and total', () => {
-    const html = panel(priceUsage(usage, book, 'deepseek', 'deepseek-flash', OFF_PEAK))
+  it('breaks a priced session down by bucket and total', () => {
+    const html = panel(priced)
 
     expect(html).toContain('本会话预估费用')
     expect(html).toContain('DeepSeek V4 Flash')
@@ -62,26 +67,28 @@ describe('BillingPanel', () => {
     expect(html).toContain('500,000 · ¥0.933')
     expect(html).toContain('合计 token')
     expect(html).toContain('3,500,000')
-    expect(html).toContain('未缓存输入')
-    expect(html).toContain('¥0.93')
   })
 
-  it('drops a zero bucket from the breakdown but keeps it in the unit rates', () => {
-    const html = panel(priceUsage(usage, book, 'deepseek', 'deepseek-flash', OFF_PEAK))
-    expect(html.match(/缓存写入/g)).toHaveLength(1)
-    expect(html.match(/未缓存输入/g)).toHaveLength(2)
+  it('keeps the unit rates collapsed until asked for', () => {
+    const closed = panel(priced)
+    expect(closed).toContain('data-token-billing-rates-toggle')
+    expect(closed).toContain('aria-expanded="false"')
+    expect(closed).toContain('data-open="false"')
+    expect(closed).toContain('每百万 token 单价')
+
+    const open = panel(priced, { open: true })
+    expect(open).toContain('aria-expanded="true"')
+    expect(open).toContain('data-open="true"')
   })
 
-  it('states the peak posture it priced at', () => {
-    const peak = panel(priceUsage(usage, book, 'deepseek', 'deepseek-flash', PEAK))
-    expect(peak).toContain('当前为高峰时段')
-    expect(peak).not.toContain('当前为低谷时段')
+  it('labels the toggle with the posture the estimate was priced at', () => {
+    expect(panel(priced)).toContain('低谷')
+    expect(panel(peakPriced)).toContain('高峰')
   })
 
   it('marks the amount once the spend threshold is crossed', () => {
-    const priced = priceUsage(usage, book, 'deepseek', 'deepseek-flash', OFF_PEAK)
     expect(panel(priced)).toContain('class="tb-titleValue"')
-    expect(panel(priced, true)).toContain('tb-titleValue tb-over')
+    expect(panel(priced, { over: true })).toContain('tb-titleValue tb-over')
   })
 
   it('explains each unpriced state instead of showing a figure', () => {
@@ -92,8 +99,14 @@ describe('BillingPanel', () => {
     expect(panel({ kind: 'no-route' })).toContain('尚未确定当前模型')
   })
 
+  it('shows neither the breakdown nor the toggle without a price', () => {
+    const html = panel({ kind: 'no-book' })
+    expect(html).not.toContain('data-token-billing-rates-toggle')
+    expect(html).not.toContain('data-token-billing-details')
+  })
+
   it('adds grant credit beside the wallet total', () => {
-    const html = panel(priceUsage(usage, book, 'deepseek', 'deepseek-flash', OFF_PEAK))
+    const html = panel(priced)
     expect(html).toContain('账户余额')
     expect(html).toContain('¥42.50')
     expect(html).toContain('+¥5.00')
@@ -121,11 +134,40 @@ describe('BillingPanel', () => {
   })
 })
 
+describe('UnitRatesCard', () => {
+  const rate = priceUsage(usage, book, 'deepseek', 'deepseek-flash', OFF_PEAK)
+  if (rate.kind !== 'ok') throw new Error('fixture must price')
+
+  it('lists all four bucket rates, including the one this session never billed', () => {
+    const html = renderToStaticMarkup(
+      createElement(UnitRatesCard, { rate: rate.rate, peak: false }),
+    )
+    expect(html).toContain('未缓存输入')
+    expect(html).toContain('缓存读取')
+    expect(html).toContain('缓存写入')
+    expect(html).toContain('输出')
+    expect(html).toContain('¥0.93')
+    expect(html).toContain('¥0.09')
+    expect(html).toContain('¥1.87')
+    expect(html).toContain('data-token-billing-rates')
+  })
+
+  it('states the posture and the display conversion', () => {
+    const low = renderToStaticMarkup(createElement(UnitRatesCard, { rate: rate.rate, peak: false }))
+    expect(low).toContain('当前为低谷时段')
+    expect(low).toContain('1 CNY = 0.15 USD')
+
+    const high = renderToStaticMarkup(createElement(UnitRatesCard, { rate: rate.rate, peak: true }))
+    expect(high).toContain('当前为高峰时段')
+    expect(high).not.toContain('当前为低谷时段')
+  })
+})
+
 describe('BillingHoverCard', () => {
   it('names the model and the posture it estimated at', () => {
     const html = renderToStaticMarkup(
       createElement(BillingHoverCard, {
-        priced: priceUsage(usage, book, 'deepseek', 'deepseek-flash', OFF_PEAK),
+        priced,
         amount: '¥1.05',
         panelRef: emptyRef,
         style: {},

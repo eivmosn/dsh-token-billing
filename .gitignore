@@ -4,3 +4,5 @@ coverage/
 *.log
 .DS_Store
 .pnpm-store
+preview/out.html
+preview/*.png
