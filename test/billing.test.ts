@@ -17,6 +17,7 @@ import {
   resolveRate,
   toCny,
   type PriceBook,
+  type UsageSource,
 } from '../src/billing.ts'
 
 function entry(overrides: Record<string, unknown> = {}): Record<string, unknown> {
@@ -429,7 +430,17 @@ describe('priceSessionTree', () => {
     if (root.kind !== 'ok' || agent.kind !== 'ok') throw new Error('fixtures must price')
 
     expect(tree.totalCny).toBeCloseTo(root.totalCny + agent.totalCny, 10)
-    expect(tree.agents).toEqual({ count: 1, cny: agent.totalCny })
+    expect(tree.agents.count).toBe(1)
+    expect(tree.agents.cny).toBeCloseTo(agent.totalCny, 10)
+    expect(tree.agents.overflow).toBe(0)
+    expect(tree.agents.items).toHaveLength(1)
+    expect(tree.agents.items[0]).toMatchObject({
+      id: 'agent-1',
+      providerId: 'openai',
+      modelId: 'gpt-9',
+      modelName: 'GPT-9',
+      tokens: 2_000_000,
+    })
     expect(tree.totalTokens).toBe(4_000_000)
 
     expect(tree.agents.cny).toBeCloseTo(toCny(30), 10)
@@ -452,6 +463,47 @@ describe('priceSessionTree', () => {
     expect(tree.rows.find((row) => row.key === 'uncachedInputTokens')?.tokens).toBe(2_000_000)
     expect(tree.rows.find((row) => row.key === 'outputTokens')?.tokens).toBe(2_000_000)
     expect(tree.rows).toHaveLength(4)
+  })
+
+  it('lists each agent with its own label, dearest first', () => {
+    const small = { uncachedInputTokens: 1_000_000 }
+    const large = { uncachedInputTokens: 10_000_000 }
+    const tree = priceSessionTree(
+      [
+        { usage: rootUsage, provider: 'deepseek', model: 'deepseek-flash' },
+        { usage: small, provider: 'deepseek', model: 'deepseek-flash', sessionId: 's-cheap', label: '研究员' },
+        { usage: large, provider: 'openai', model: 'gpt-9', sessionId: 's-dear', label: '审阅者' },
+      ],
+      twoRouteBook,
+      at,
+    )
+    if (tree === null) throw new Error('expected a priced tree')
+
+    expect(tree.agents.items.map((item) => item.id)).toEqual(['s-dear', 's-cheap'])
+    expect(tree.agents.items.map((item) => item.label)).toEqual(['审阅者', '研究员'])
+    expect(tree.agents.items[0]?.cny).toBeGreaterThan(tree.agents.items[1]?.cny ?? 0)
+    expect(tree.agents.count).toBe(2)
+    expect(tree.agents.overflow).toBe(0)
+  })
+
+  it('caps the listed agents and reports the overflow', () => {
+    const sources: UsageSource[] = [
+      { usage: rootUsage, provider: 'deepseek', model: 'deepseek-flash' },
+    ]
+    for (let index = 0; index < 20; index += 1) {
+      sources.push({
+        usage: { outputTokens: 1_000 + index },
+        provider: 'deepseek',
+        model: 'deepseek-flash',
+        sessionId: `s-${String(index)}`,
+        label: `agent ${String(index)}`,
+      })
+    }
+    const tree = priceSessionTree(sources, twoRouteBook, at)
+    if (tree === null) throw new Error('expected a priced tree')
+    expect(tree.agents.count).toBe(20)
+    expect(tree.agents.items).toHaveLength(12)
+    expect(tree.agents.overflow).toBe(8)
   })
 
   it('skips a session it cannot route or price', () => {

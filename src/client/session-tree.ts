@@ -54,10 +54,13 @@ export function collectChildUsage(
       }
 
       const selection = values?.modelSelection
+      const summary = byId[childId]
       sources.push({
         usage,
         provider: selection?.next?.provider ?? selection?.lastUsed?.provider,
         model: selection?.next?.model ?? selection?.lastUsed?.model,
+        sessionId: childId,
+        label: summary?.title ?? summary?.displayTitle ?? childId,
       })
     }
   }

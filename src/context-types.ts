@@ -89,6 +89,8 @@ export interface SessionSummary {
   parentSession?: string
   blank?: boolean
   origin?: string
+  title?: string
+  displayTitle?: string
   projectionValues?: SessionProjections
   projections?: SessionProjections
 }

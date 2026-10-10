@@ -309,12 +309,29 @@ export interface UsageSource {
   usage: unknown
   provider: string | undefined
   model: string | undefined
+  sessionId?: string
+  label?: string
+}
+
+export interface AgentSpend {
+  id: string
+  label: string
+  providerId: string
+  modelId: string
+  modelName: string
+  cny: number
+  tokens: number
+  peak: boolean
 }
 
 export interface AgentRollup {
   count: number
   cny: number
+  items: AgentSpend[]
+  overflow: number
 }
+
+export const MAX_AGENT_ITEMS = 12
 
 export interface SessionTreePrice {
   totalCny: number
@@ -336,6 +353,7 @@ export function priceSessionTree(
   let priced = 0
   let agentCount = 0
   let agentCny = 0
+  const agentItems: AgentSpend[] = []
 
   for (let index = 0; index < sources.length; index += 1) {
     const source = sources[index]
@@ -350,6 +368,16 @@ export function priceSessionTree(
     if (index > 0) {
       agentCount += 1
       agentCny += result.totalCny
+      agentItems.push({
+        id: source.sessionId ?? `agent-${String(index)}`,
+        label: source.label ?? result.modelName,
+        providerId: result.providerId,
+        modelId: result.modelId,
+        modelName: result.modelName,
+        cny: result.totalCny,
+        tokens: result.totalTokens,
+        peak: result.peak,
+      })
     }
 
     for (const row of result.rows) {
@@ -382,7 +410,12 @@ export function priceSessionTree(
     totalTokens,
     rows,
     peak,
-    agents: { count: agentCount, cny: agentCny },
+    agents: {
+      count: agentCount,
+      cny: agentCny,
+      items: agentItems.sort((left, right) => right.cny - left.cny).slice(0, MAX_AGENT_ITEMS),
+      overflow: Math.max(0, agentCount - MAX_AGENT_ITEMS),
+    },
   }
 }
 

@@ -47,6 +47,8 @@ describe('collectChildUsage', () => {
       usage: { uncachedInputTokens: 5 },
       provider: 'openai',
       model: 'gpt-9',
+      sessionId: 'child',
+      label: 'child',
     })
   })
 
