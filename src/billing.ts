@@ -4,8 +4,6 @@ export const BALANCE_ROUTE = '/plugins/dsh-token-billing/balance'
 
 export const USD_PER_CNY = 0.15
 
-export const ALERT_THRESHOLD_CNY = 5
-
 export const PEAK_FACTOR = 2
 
 const DEEPSEEK_PROVIDER = /deepseek/i
