@@ -159,14 +159,12 @@ export function BillingChip({
         </>
       )}
       {running && (
-        <>
+        <span className="tb-running" data-token-billing-live="">
           <span className="tb-sep" aria-hidden>
             ·
           </span>
-          <span className="tb-live" data-token-billing-live="">
-            计费中
-          </span>
-        </>
+          计费中
+        </span>
       )}
     </span>
   )

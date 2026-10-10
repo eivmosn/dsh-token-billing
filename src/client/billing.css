@@ -530,8 +530,13 @@ button.tb-pill[aria-expanded="true"] {
   font-variant-numeric: tabular-nums;
 }
 
-.tb-live {
+.tb-running {
+  color: var(--dsw-alias-state-success-primary);
   white-space: nowrap;
+}
+
+.tb-running .tb-sep {
+  color: inherit;
 }
 
 
