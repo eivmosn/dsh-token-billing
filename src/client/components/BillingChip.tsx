@@ -158,7 +158,7 @@ export function BillingChip({
             <span className="tb-sep" aria-hidden>
               ·
             </span>
-            {formatCost(animatedTurnCny)}
+            {`花费 ${formatCost(animatedTurnCny)}`}
           </span>
         </>
       )}
