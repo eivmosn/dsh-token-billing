@@ -74,9 +74,13 @@ export function BillingChip({
   const [baseline, setBaseline] = react.useState<UsageBuckets | undefined>(undefined)
 
   react.useEffect(() => {
-    if (running === previousRunning.current) return
-    previousRunning.current = running
-    setBaseline(running ? usage : undefined)
+    if (!running) {
+      previousRunning.current = false
+      return
+    }
+    if (previousRunning.current) return
+    previousRunning.current = true
+    setBaseline(usage)
   }, [running, usage])
 
   const [hover, setHover] = react.useState(false)
@@ -105,10 +109,10 @@ export function BillingChip({
 
   const turnPriced = react.useMemo(
     () =>
-      running && baseline !== undefined && usage !== undefined
+      baseline !== undefined && usage !== undefined
         ? priceUsage(subtractBuckets(usage, baseline), book.book, provider, model, new Date(now))
         : null,
-    [running, baseline, usage, book.book, provider, model, now],
+    [baseline, usage, book.book, provider, model, now],
   )
 
   const turn =
