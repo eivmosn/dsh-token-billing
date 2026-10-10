@@ -153,7 +153,7 @@ pnpm build
 ### 怎么算
 
 1. 当前会话 `tokenUsage` 取四桶，`modelSelection` 取它自己的路由；
-2. 子智能体 / teammate 是**独立的 session**（`childSessionMeta` 把 `parentSession` 写进子会话 header），父会话的 `tokenUsage` **不包含**它们 —— 所以沿 `byId[].parentId` 走完整棵后代树，逐个取出各自的 `tokenUsage` 与 `modelSelection`；
+2. 子智能体 / teammate 是**独立的 session**（`childSessionMeta` 把 `parentSession` 写进子会话 header），父会话的 `tokenUsage` **不包含**它们 —— 所以沿 `byId[].parentId` 走完整棵后代树，逐个取出各自的 `tokenUsage` 与 `modelSelection`。字段形状已对权威来源核实：roster 行的构造在 `@deepseek-ai/dsh-api-session-controller/lib/types/client/sessions/service.js`，`parentId` 是 wire 上 `parentSessionId` 的映射，`projectionValues` 逐行携带；
 3. 每个 session 按**它自己的路由**计价，再求和；还没上报用量的后代会计数并在面板里标为「未上报」，不静默丢弃；
 4. 明细按金额降序列出花费最高的 12 个 agent，超出部分只报数量。
 
