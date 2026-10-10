@@ -118,6 +118,11 @@ const STATIC_TOKENS: Record<string, string> = {
   '--dsw-static-deepseek-400': '#7aaaff',
   '--dsw-static-blue-400': '#60a5fa',
   '--dsw-static-blue-500': '#3b82f6',
+  '--dsw-static-blue-100': '#dbeafe',
+  '--dsw-static-red-400': '#f25a5a',
+  '--dsw-static-red-500': '#ef4444',
+  '--dsw-static-green-500': '#22c55e',
+  '--dsw-static-amber-500': '#f59e0b',
   '--dsw-static-green-400': '#4ed17e',
   '--dsw-static-amber-400': '#f7ad31',
 }

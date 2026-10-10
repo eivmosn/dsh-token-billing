@@ -90,17 +90,19 @@ button.tb-pill[aria-expanded="true"] {
   cursor: default;
   font-size: 12px;
   line-height: 18px;
-  --tb-dot-alpha: 0.62;
+  --tb-dot-alpha: 0.58;
   --tb-dot-fade: linear-gradient(180deg, #000 0, rgb(0 0 0 / 40%) 30px, transparent 64px);
 }
 
 .tb-panel::before,
 .tb-hover::before,
 .tb-rateCard::before {
-  --tb-dot-1: color-mix(in srgb, var(--dsw-static-deepseek-400) 82%, transparent);
-  --tb-dot-2: color-mix(in srgb, var(--dsw-static-blue-500) 78%, transparent);
-  --tb-dot-3: color-mix(in srgb, var(--dsw-static-green-400) 76%, transparent);
-  --tb-dot-4: color-mix(in srgb, var(--dsw-static-amber-400) 80%, transparent);
+  --tb-dot-1: color-mix(in srgb, var(--dsw-static-red-400) 72%, var(--dsw-static-blue-100));
+  --tb-dot-2: var(--dsw-static-red-500);
+  --tb-dot-3: var(--dsw-static-amber-500);
+  --tb-dot-4: var(--dsw-static-green-500);
+  --tb-dot-5: var(--dsw-static-blue-500);
+  --tb-dot-6: var(--dsw-static-deepseek-400);
   content: "";
   position: absolute;
   inset: 0;
@@ -109,10 +111,12 @@ button.tb-pill[aria-expanded="true"] {
   border-radius: inherit;
   background-image:
     radial-gradient(circle at 6px 19px, var(--tb-dot-1) 0.8px, transparent 1.4px),
-    radial-gradient(circle at 21px 4px, var(--tb-dot-2) 0.8px, transparent 1.4px),
+    radial-gradient(circle at 23px 7px, var(--tb-dot-2) 0.8px, transparent 1.4px),
     radial-gradient(circle at 13px 12px, var(--tb-dot-3) 0.8px, transparent 1.4px),
-    radial-gradient(circle at 25px 24px, var(--tb-dot-4) 0.8px, transparent 1.4px);
-  background-size: 27px 26px, 29px 31px, 31px 28px, 33px 29px;
+    radial-gradient(circle at 27px 30px, var(--tb-dot-4) 0.8px, transparent 1.4px),
+    radial-gradient(circle at 8px 25px, var(--tb-dot-5) 0.8px, transparent 1.4px),
+    radial-gradient(circle at 31px 5px, var(--tb-dot-6) 0.8px, transparent 1.4px);
+  background-size: 27px 26px, 31px 28px, 33px 29px, 35px 37px, 37px 34px, 41px 38px;
   opacity: var(--tb-dot-alpha, 0.5);
   -webkit-mask-image: var(--tb-dot-fade, none);
   mask-image: var(--tb-dot-fade, none);
@@ -131,7 +135,7 @@ button.tb-pill[aria-expanded="true"] {
 .tb-titleRule {
   height: 1px;
   margin-bottom: 12px;
-  background: linear-gradient(90deg, var(--dsw-alias-border-l2), transparent 68%);
+  background: var(--dsw-alias-border-l2);
 }
 
 .tb-titleValue {
