@@ -539,6 +539,20 @@ button.tb-pill[aria-expanded="true"] {
   background: var(--dsw-alias-state-success-primary);
   flex: none;
   display: inline-block;
+  animation: tb-breathe 1.8s ease-in-out infinite;
+}
+
+@keyframes tb-breathe {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+
+  50% {
+    opacity: 0.4;
+    transform: scale(0.72);
+  }
 }
 
 
@@ -567,5 +581,9 @@ button.tb-pill[aria-expanded="true"] {
   .tb-subagentLabel,
   .tb-subagentMeta {
     transition: none;
+  }
+
+  .tb-running {
+    animation: none;
   }
 }
