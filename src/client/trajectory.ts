@@ -2,6 +2,10 @@ import type { BilledRequest } from '../attribution.ts'
 import { asRecord, numOf, type UsageBuckets } from '../billing.ts'
 
 export interface TrajectoryUsage {
+  uncachedInputTokens?: unknown
+  cacheReadTokens?: unknown
+  cacheWriteTokens?: unknown
+  outputTokens?: unknown
   input?: unknown
   cacheRead?: unknown
   cacheWrite?: unknown
@@ -24,10 +28,10 @@ function bucketsOf(value: unknown): UsageBuckets | undefined {
   if (usage === null) return undefined
 
   const buckets: UsageBuckets = {}
-  const miss = numOf(usage.input)
-  const hit = numOf(usage.cacheRead)
-  const write = numOf(usage.cacheWrite)
-  const out = numOf(usage.output)
+  const miss = numOf(usage.uncachedInputTokens ?? usage.input)
+  const hit = numOf(usage.cacheReadTokens ?? usage.cacheRead)
+  const write = numOf(usage.cacheWriteTokens ?? usage.cacheWrite)
+  const out = numOf(usage.outputTokens ?? usage.output)
   if (miss !== null) buckets.uncachedInputTokens = miss
   if (hit !== null) buckets.cacheReadTokens = hit
   if (write !== null) buckets.cacheWriteTokens = write

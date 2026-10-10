@@ -46,6 +46,26 @@ describe('reading billed requests off the trajectory', () => {
     expect(requests.every((request) => request.at === 1_000 || request.at === 3_000)).toBe(true)
   })
 
+  it('reads the harness bucket names as well as the short ones', () => {
+    const requests = billedRequestsOf({
+      eventNodes: [
+        {
+          kind: 'assistant',
+          time: 5_000,
+          usage: { uncachedInputTokens: 7, cacheReadTokens: 8, cacheWriteTokens: 9, outputTokens: 10 },
+          providerMetadata: { provider: 'deepseek', model: 'deepseek-flash' },
+        },
+      ],
+    })
+
+    expect(requests[0]?.buckets).toEqual({
+      uncachedInputTokens: 7,
+      cacheReadTokens: 8,
+      cacheWriteTokens: 9,
+      outputTokens: 10,
+    })
+  })
+
   it('survives a snapshot it does not recognise', () => {
     expect(billedRequestsOf(undefined)).toEqual([])
     expect(billedRequestsOf({})).toEqual([])

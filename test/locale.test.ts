@@ -7,7 +7,7 @@ describe('the locale binding', () => {
   it('falls back to Chinese when the host offers no locale service', () => {
     bindLocale(undefined)
     expect(t('panel.session')).toBe('会话合计')
-    expect(t('chip.turnTokens', { tokens: '1,234' })).toBe('本轮 1,234 tok')
+    expect(t('chip.turnTokens', { tokens: '1,234' })).toBe('本次 1,234 tok')
   })
 
   it('reads the active locale once a service is bound', () => {

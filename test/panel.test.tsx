@@ -177,7 +177,7 @@ describe('BillingPanel', () => {
         style: {},
       }),
     )
-    expect(withTurn).toContain('本次对话')
+    expect(withTurn).toContain('本次')
     expect(withTurn).toContain('1,284,000 · ¥0.42')
     expect(withTurn).toContain('会话合计')
 
@@ -191,7 +191,7 @@ describe('BillingPanel', () => {
         style: {},
       }),
     )
-    expect(without).not.toContain('本次对话')
+    expect(without).not.toContain('本次')
   })
 
   it('links a resolved wallet to the platform usage page', () => {
