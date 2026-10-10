@@ -119,10 +119,14 @@ button.tb-pill[aria-expanded="true"] {
   display: flex;
 }
 
-.tb-titleRule {
+.tb-titleRule,
+.tb-subagentTitle::after {
   height: 1px;
-  margin-bottom: 12px;
   background: var(--dsw-alias-border-l1);
+}
+
+.tb-titleRule {
+  margin-bottom: 12px;
 }
 
 .tb-titleValue {
@@ -354,17 +358,7 @@ button.tb-pill[aria-expanded="true"] {
 
 .tb-subagentTitle::after {
   content: "";
-  height: 1px;
   margin: 7px 0 4px;
-  background-image: linear-gradient(
-    104deg,
-    color-mix(in srgb, var(--dsw-static-deepseek-400) 55%, transparent) 0%,
-    color-mix(in srgb, var(--dsw-static-blue-500) 50%, transparent) 22%,
-    color-mix(in srgb, var(--dsw-static-green-500) 45%, transparent) 44%,
-    color-mix(in srgb, var(--dsw-static-amber-400) 50%, transparent) 66%,
-    color-mix(in srgb, var(--dsw-static-red-400) 55%, transparent) 84%,
-    transparent 100%
-  );
   display: block;
 }
 
