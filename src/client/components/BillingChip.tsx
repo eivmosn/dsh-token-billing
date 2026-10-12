@@ -228,16 +228,6 @@ export function BillingChip({
           </span>
         </>
       )}
-      {searches > 0 && (
-        <>
-          <span className="tb-sep" aria-hidden>
-            ·
-          </span>
-          <span className="tb-turn" data-token-billing-search="">
-            {t('chip.search', { count: searches, cost: formatCost(session.searchCny) })}
-          </span>
-        </>
-      )}
       {running && <span className="tb-running" data-token-billing-live="" aria-hidden />}
     </span>
   )
