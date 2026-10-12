@@ -345,7 +345,7 @@ export function BillingPanel({
       <div className="tb-balanceRow" data-token-billing-balance>
         <span className="tb-balanceLabel">{t('panel.balance')}</span>
         {balance.status === 'ready' ? (
-          <>
+          <span className="tb-balanceAnchor">
             <a
               className="tb-balanceValue tb-balanceLink"
               href={USAGE_URL}
@@ -359,7 +359,7 @@ export function BillingPanel({
             <span className="tb-balanceTip" role="tooltip">
               {t('balance.usageTip')}
             </span>
-          </>
+          </span>
         ) : (
           <span className="tb-balanceValue" data-token-billing-balance-value={balance.status}>
             <BalanceValue state={balance} />

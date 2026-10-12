@@ -555,9 +555,16 @@ button.tb-pill[aria-expanded="true"] {
 
 
 
+.tb-balanceAnchor {
+  position: relative;
+  display: inline-flex;
+  min-width: 0;
+}
+
 .tb-balanceTip {
   position: absolute;
-  right: 0;
+  left: 50%;
+  transform: translateX(-50%);
   bottom: calc(100% + 6px);
   z-index: 1;
   padding: 4px 8px;
