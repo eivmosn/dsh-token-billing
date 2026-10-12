@@ -11,6 +11,9 @@ import {
   type AttributedGroup,
 } from '../../attribution.ts'
 import {
+  burnRemainingMs,
+  cacheSaving,
+  dominantShare,
   formatBalance,
   formatCost,
   formatTokens,
@@ -178,6 +181,37 @@ export function BillingChip({
     }, since)
   }, [baseline, usage, requests, book.book, provider, model, now, searchCalls])
 
+  const insight = react.useMemo(() => {
+    if (usage === undefined || priced.kind !== 'ok') return undefined
+    const saving = cacheSaving(usage, priced.rate, priced.factor)
+    if (saving !== undefined && saving.hitRate >= 0.5) {
+      return t('insight.cache', {
+        rate: `${(saving.hitRate * 100).toFixed(1)}%`,
+        cost: formatCost(saving.savedCny),
+      })
+    }
+    const share = dominantShare(usage, priced.rate, priced.factor)
+    return share === undefined
+      ? undefined
+      : t('insight.bucket', {
+          label: share.label,
+          share: `${String(Math.round(share.share * 100))}%`,
+        })
+  }, [usage, priced, t])
+
+  const burn = react.useMemo(() => {
+    if (turn === undefined || baseline === undefined) return undefined
+    const wallet = balance.status === 'ready' ? balance.wallets[0] : undefined
+    const left = wallet === undefined ? Number.NaN : Number(wallet.balance)
+    const remaining = burnRemainingMs(turn.cny, now - baseline.at, left)
+    if (remaining === undefined) return undefined
+
+    const minutes = Math.max(1, Math.round(remaining / 60_000))
+    return minutes < 60
+      ? t('burn.minutes', { minutes })
+      : t('burn.hours', { hours: Math.floor(minutes / 60), minutes: minutes % 60 })
+  }, [turn, baseline, balance, now, t])
+
   const flatCny = priced.kind === 'ok' ? priced.totalCny + session.searchCny : 0
   const rootCny = attributed?.totalCny ?? flatCny
   const rootTokens = attributed?.totalTokens ?? (priced.kind === 'ok' ? priced.totalTokens : 0)
@@ -293,6 +327,8 @@ export function BillingChip({
             agents={agents}
             turn={turn}
             search={searches > 0 ? { calls: searches, cny: session.searchCny } : undefined}
+            insight={insight}
+            burn={burn}
             panelRef={panelRef}
             style={pos ?? MEASURE_STYLE}
           />,

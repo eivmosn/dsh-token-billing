@@ -36,6 +36,64 @@ export function formatTokens(value: number): string {
   return String(value)
 }
 
+export interface CacheSaving {
+  hitRate: number
+  savedCny: number
+}
+
+export function cacheSaving(
+  buckets: UsageBuckets,
+  rate: Rate,
+  factor: number,
+): CacheSaving | undefined {
+  const hit = numOf(buckets.cacheReadTokens) ?? 0
+  const miss = numOf(buckets.uncachedInputTokens) ?? 0
+  const total = hit + miss
+  if (total === 0) return undefined
+
+  const savedUsd = (hit * Math.max(0, rate.miss - rate.hit) * factor) / 1e6
+  return { hitRate: hit / total, savedCny: toCny(savedUsd) }
+}
+
+export interface BucketShare {
+  label: string
+  share: number
+}
+
+export function dominantShare(
+  buckets: UsageBuckets,
+  rate: Rate,
+  factor: number,
+): BucketShare | undefined {
+  let best: BucketShare | undefined
+  let total = 0
+  const costs: BucketShare[] = []
+
+  for (const bucket of BUCKETS) {
+    const tokens = numOf(buckets[bucket.key]) ?? 0
+    if (tokens === 0) continue
+    const cny = (tokens * rate[bucket.rate] * factor) / 1e6
+    total += cny
+    costs.push({ label: bucket.label, share: cny })
+  }
+  if (total === 0) return undefined
+
+  for (const cost of costs) {
+    const share = cost.share / total
+    if (best === undefined || share > best.share) best = { label: cost.label, share }
+  }
+  return best
+}
+
+export function burnRemainingMs(
+  spentCny: number,
+  elapsedMs: number,
+  balanceCny: number,
+): number | undefined {
+  if (spentCny <= 0 || elapsedMs < 30_000 || balanceCny <= 0) return undefined
+  return balanceCny / (spentCny / elapsedMs)
+}
+
 export function formatBalance(amount: string, symbol: string): string {
   const raw = typeof amount === 'string' ? amount.trim() : ''
 

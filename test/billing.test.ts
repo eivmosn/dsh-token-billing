@@ -3,6 +3,9 @@ import { describe, expect, it } from 'vitest'
 import {
   formatBalance,
   formatCost,
+  burnRemainingMs,
+  cacheSaving,
+  dominantShare,
   formatExactTokens,
   formatTokens,
   formatRate,
@@ -554,5 +557,33 @@ describe('formatTokens', () => {
     expect(formatTokens(594_860)).toBe('595K')
     expect(formatTokens(5_351_837)).toBe('5.4M')
     expect(formatTokens(2_400_000_000)).toBe('2.4B')
+  })
+})
+
+describe('reading the numbers back to a person', () => {
+  it('says how much the cache saved against paying full price', () => {
+    const saving = cacheSaving(
+      { cacheReadTokens: 1_000_000, uncachedInputTokens: 1_000_000 },
+      { miss: 0.15, hit: 0.003, write: 0.15, out: 0.6, name: 'x' },
+      1,
+    )
+
+    expect(saving?.hitRate).toBeCloseTo(0.5, 10)
+    expect(saving?.savedCny).toBeCloseTo(((0.15 - 0.003) / 0.15), 6)
+  })
+
+  it('names the bucket that actually cost the most', () => {
+    const rate = { miss: 0.15, hit: 0.003, write: 0.15, out: 0.6, name: 'x' }
+    const share = dominantShare({ outputTokens: 1_000_000, uncachedInputTokens: 100 }, rate, 1)
+
+    expect(share?.label).toBe('输出')
+    expect(share?.share).toBeGreaterThan(0.99)
+  })
+
+  it('projects how long the balance lasts, and stays quiet when it cannot', () => {
+    expect(burnRemainingMs(1, 60_000, 10)).toBeCloseTo(600_000, 6)
+    expect(burnRemainingMs(1, 10_000, 10)).toBeUndefined()
+    expect(burnRemainingMs(0, 600_000, 10)).toBeUndefined()
+    expect(burnRemainingMs(1, 600_000, 0)).toBeUndefined()
   })
 })

@@ -63,6 +63,8 @@ export interface BillingPanelProps {
   totalTokens?: number
   agents?: AgentUsage
   search?: SearchSpend
+  insight?: string
+  burn?: string
   turn?: { tokens: number; cny: number }
 }
 
@@ -95,6 +97,8 @@ export function BillingPanel({
   totalTokens,
   agents,
   search,
+  insight,
+  burn,
   turn,
 }: BillingPanelProps): ReactNode {
   const animatedTurnCny = useCountUp(turn?.cny ?? 0)
@@ -289,6 +293,16 @@ export function BillingPanel({
 
       {priced.kind === 'no-route' && <div className="tb-note">{t('panel.noModel')}</div>}
 
+      {insight === undefined ? null : (
+        <div className="tb-note" data-token-billing-insight="">
+          {insight}
+        </div>
+      )}
+      {burn === undefined ? null : (
+        <div className="tb-note" data-token-billing-burn="">
+          {burn}
+        </div>
+      )}
       <div className="tb-balanceRow" data-token-billing-balance>
         <span className="tb-balanceLabel">{t('panel.balance')}</span>
         {balance.status === 'ready' ? (
