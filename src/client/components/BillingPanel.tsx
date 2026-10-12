@@ -356,18 +356,6 @@ export function BillingPanel({
               data-token-billing-balance-link=""
             >
               <BalanceValue state={balance} />
-              <svg
-                className="tb-balanceArrow"
-                width="11"
-                height="11"
-                viewBox="0 0 12 12"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="1.6"
-                aria-hidden="true"
-              >
-                <path d="M4.5 3h4.5v4.5M9 3 3.5 8.5" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
             </a>
           </Tooltip>
         ) : (

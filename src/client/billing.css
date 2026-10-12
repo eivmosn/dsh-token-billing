@@ -552,13 +552,4 @@ button.tb-pill[aria-expanded="true"] {
   box-shadow: none;
 }
 
-.tb-balanceArrow {
-  flex: none;
-  margin-left: 4px;
-  vertical-align: -1px;
-  opacity: 0.55;
-}
 
-.tb-balanceLink:hover .tb-balanceArrow {
-  opacity: 1;
-}
