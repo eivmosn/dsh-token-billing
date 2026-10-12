@@ -212,7 +212,7 @@ export function BillingPanel({
       {priced.kind === 'ok' && (
         <>
           <dl className="tb-details" data-token-billing-details>
-            <div className="tb-row" data-open={ratesOpen ? 'true' : 'false'}>
+            <div className="tb-row tb-agentRow" data-open={ratesOpen ? 'true' : 'false'}>
               <dt>
                 <button
                   ref={rateTriggerRef}

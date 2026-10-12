@@ -11,7 +11,11 @@ export function BalanceValue({ state }: { state: BalanceState }): ReactNode {
   const bonusTotal = state.bonusWallets.reduce((sum, wallet) => sum + Number(wallet.balance), 0)
 
   const parts: ReactNode[] = state.wallets.map((wallet) => (
-    <span key={`b-${wallet.currency}`} data-token-billing-wallet={wallet.currency}>
+    <span
+      key={`b-${wallet.currency}`}
+      data-token-billing-wallet={wallet.currency}
+      data-negative={Number(wallet.balance) < 0 ? '' : undefined}
+    >
       {formatBalance(wallet.balance, wallet.currency === 'CNY' ? '¥' : '$')}
     </span>
   ))

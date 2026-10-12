@@ -104,14 +104,18 @@ export function formatBalance(amount: string, symbol: string): string {
   const [intPartRaw = '0', fracPart = ''] = magnitude.split('.')
   const intPart = Number(intPartRaw)
 
-  const cents = Number((fracPart + '00').slice(0, 2))
+  const digits = (fracPart + '000').slice(0, 3)
+  const hundredths = Number(digits.slice(0, 2)) + (Number(digits[2] ?? '0') >= 5 ? 1 : 0)
+  const carry = hundredths >= 100 ? 1 : 0
+  const cents = hundredths % 100
+  const whole = intPart + carry
 
-  const subCent = intPart === 0 && cents === 0 && /[1-9]/.test(fracPart.slice(2))
+  const subCent = whole === 0 && cents === 0 && /[1-9]/.test(fracPart)
 
-  const grouped = intPart.toLocaleString('en-US')
+  const grouped = whole.toLocaleString('en-US')
   const text = `${grouped}.${String(cents).padStart(2, '0')}`
 
-  if (intPart === 0 && cents === 0 && !subCent) return `${symbol}0.00`
+  if (whole === 0 && cents === 0 && !subCent) return `${symbol}0.00`
 
   if (negative) {
 

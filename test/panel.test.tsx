@@ -78,12 +78,17 @@ const agents: AgentUsage = {
 
 function panel(
   p: PriceResult,
-  opts: { open?: boolean; totalCny?: number; agents?: AgentUsage } = {},
+  opts: {
+    open?: boolean
+    totalCny?: number
+    agents?: AgentUsage
+    balance?: BalanceState
+  } = {},
 ): string {
   return renderToStaticMarkup(
     createElement(BillingPanel, {
       priced: p,
-      balance,
+      balance: opts.balance ?? balance,
       headline: '¥ —',
       totalCny: opts.totalCny ?? (p.kind === 'ok' ? p.totalCny : 0),
       agents: opts.agents,
@@ -95,6 +100,14 @@ function panel(
 }
 
 describe('BillingPanel', () => {
+  it('marks a debt in red rather than dressing it as a balance', () => {
+    const owed = { ...balance, wallets: [{ currency: 'CNY' as const, balance: '-0.045' }], bonusWallets: [] }
+    const html = panel(priced, { balance: owed })
+
+    expect(html).toContain('data-negative')
+    expect(html).toContain('-¥0.05')
+  })
+
   it('carries the balance tooltip in the row, revealed on hover', () => {
     const html = panel(priced)
 

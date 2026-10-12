@@ -313,10 +313,15 @@ button.tb-pill[aria-expanded="true"] {
   display: block;
 }
 
+.tb-subagentItem:hover {
+  background-color: color-mix(in srgb, var(--dsw-alias-label-primary) 4%, transparent);
+}
+
 .tb-subagentList {
   flex-direction: column;
   gap: 4px;
   margin: -3px 0;
+  margin-top: 5px;
   padding: 0;
   list-style: none;
   display: flex;
@@ -327,10 +332,6 @@ button.tb-pill[aria-expanded="true"] {
   padding: 3px 8px;
   border-radius: 6px;
   transition: background-color 0.18s ease;
-}
-
-.tb-subagentItem:hover {
-  background-color: color-mix(in srgb, var(--dsw-alias-label-primary) 4%, transparent);
 }
 
 .tb-subagentLine {
@@ -582,5 +583,11 @@ button.tb-pill[aria-expanded="true"] {
 
 .tb-balanceLink:hover ~ .tb-balanceTip,
 .tb-balanceLink:focus-visible ~ .tb-balanceTip {
+  opacity: 1;
+}
+
+[data-token-billing-wallet][data-negative],
+.tb-balanceNow[data-negative] {
+  color: var(--dsw-alias-state-error-primary);
   opacity: 1;
 }

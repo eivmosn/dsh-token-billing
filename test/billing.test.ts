@@ -228,9 +228,21 @@ describe('money formatting', () => {
 })
 
 describe('formatBalance', () => {
-  it('truncates to cents so a shown balance never exceeds the wallet', () => {
-    expect(formatBalance('12.345', '¥')).toBe('¥12.34')
-    expect(formatBalance('1234567.899', '¥')).toBe('¥1,234,567.89')
+  it('rounds to cents the way the platform page does', () => {
+    expect(formatBalance('12.344', '¥')).toBe('¥12.34')
+    expect(formatBalance('12.345', '¥')).toBe('¥12.35')
+    expect(formatBalance('1234567.899', '¥')).toBe('¥1,234,567.90')
+  })
+
+  it('rounds a sub-cent debt away from zero, not toward it', () => {
+    expect(formatBalance('-0.045', '¥')).toBe('-¥0.05')
+    expect(formatBalance('-0.044', '¥')).toBe('-¥0.04')
+    expect(formatBalance('-1.005', '¥')).toBe('-¥1.01')
+  })
+
+  it('carries a rounded cent into the whole part', () => {
+    expect(formatBalance('9.999', '¥')).toBe('¥10.00')
+    expect(formatBalance('-99.995', '¥')).toBe('-¥100.00')
   })
 
   it('marks a positive sub-cent remainder as a floor', () => {

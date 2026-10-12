@@ -267,7 +267,11 @@ export function BillingChip({
           <span className="tb-sep" aria-hidden>
             /
           </span>
-          <span className="tb-balanceNow" data-token-billing-balance-now="">
+          <span
+            className="tb-balanceNow"
+            data-token-billing-balance-now=""
+            data-negative={wallet !== undefined && Number(wallet.balance) < 0 ? '' : undefined}
+          >
             {balanceText}
           </span>
         </>
