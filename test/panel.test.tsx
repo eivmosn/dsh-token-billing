@@ -113,7 +113,7 @@ describe('BillingPanel', () => {
     const details = /data-token-billing-details[^>]*>(.*?)<\/dl>/.exec(html)?.[1] ?? ''
 
     expect(details.match(/class="tb-row/g)).toHaveLength(5)
-    expect(details).toContain('<dt>模型</dt><dd data-token-billing-model="">')
+    expect(details).toContain('<dd data-token-billing-model="">DeepSeek V4 Flash</dd>')
     expect(details).toContain('</dd></div>')
   })
 

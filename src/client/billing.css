@@ -537,24 +537,6 @@ button.tb-pill[aria-expanded="true"] {
   }
 }
 
-.tb-rateTrigger {
-  appearance: none;
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  margin: 0;
-  padding: 0;
-  border: 0;
-  background: none;
-  color: inherit;
-  font: inherit;
-  cursor: pointer;
-}
-
-.tb-rateTrigger:hover {
-  color: var(--dsw-alias-label-primary);
-}
-
 
 
 .tb-rateFloat {
@@ -565,4 +547,7 @@ button.tb-pill[aria-expanded="true"] {
 
 .tb-rateFloat .tb-rateCard {
   margin-top: 0;
+  padding: 0;
+  background: none;
+  box-shadow: none;
 }

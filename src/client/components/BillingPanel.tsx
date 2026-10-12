@@ -214,20 +214,20 @@ export function BillingPanel({
         <>
           <dl className="tb-details" data-token-billing-details>
             <div className="tb-row" data-open={ratesOpen ? 'true' : 'false'}>
-              <dt>{t('panel.model')}</dt>
-              <dd data-token-billing-model="">
+              <dt>
                 <button
                   ref={rateTriggerRef}
                   type="button"
-                  className="tb-agentTrigger tb-rateTrigger"
+                  className="tb-agentTrigger"
                   aria-expanded={ratesOpen}
                   data-token-billing-rates-toggle
                   onClick={() => setRatesVisible(!ratesOpen)}
                 >
-                  {priced.modelName}
+                  {t('panel.model')}
                   <Chevron className="tb-agentChevron" />
                 </button>
-              </dd>
+              </dt>
+              <dd data-token-billing-model="">{priced.modelName}</dd>
             </div>
             {search === undefined || search.calls === 0 ? null : (
               <div
