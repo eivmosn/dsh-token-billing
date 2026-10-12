@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import { bindLocale, registerDictionaries, t } from '../src/client/locale.ts'
-import { useService } from './stubs/locale.ts'
+import { fakeLocale, useService } from './stubs/locale.ts'
 
 describe('the locale binding', () => {
   it('falls back to Chinese when the host offers no locale service', () => {
@@ -54,6 +54,23 @@ describe('the locale binding', () => {
       'panel.balance',
     ]) {
       expect(t(key).length).toBeLessThanOrEqual(13)
+    }
+  })
+
+  it('never writes a currency symbol in front of a placeholder', () => {
+    bindLocale(undefined)
+    for (const locale of ['zh', 'en']) {
+      bindLocale(fakeLocale(() => locale))
+      for (const key of [
+        'burn.line',
+        'chip.balanceSuffix',
+        'chip.turnCost',
+        'panel.agentsCount',
+        'panel.searchValue',
+        'insight.cache',
+      ]) {
+        expect(t(key)).not.toMatch(/¥\s*\{/)
+      }
     }
   })
 
