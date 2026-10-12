@@ -199,18 +199,38 @@ export function BillingChip({
         })
   }, [usage, priced, t])
 
+  const burnRef = react.useRef<{ cny: number; minutes: number } | undefined>(undefined)
+  const turnCny = turn?.cny
+
+  react.useEffect(() => {
+    if (turnCny === undefined || baseline === undefined || turnCny <= 0) {
+      burnRef.current = undefined
+      return
+    }
+    burnRef.current = { cny: turnCny, minutes: (Date.now() - baseline.at) / 60_000 }
+  }, [turnCny, baseline])
+
   const burn = react.useMemo(() => {
-    if (turn === undefined || baseline === undefined) return undefined
+    const snapshot = burnRef.current
+    if (snapshot === undefined || snapshot.minutes <= 0) return undefined
+
     const wallet = balance.status === 'ready' ? balance.wallets[0] : undefined
     const left = wallet === undefined ? Number.NaN : Number(wallet.balance)
-    const remaining = burnRemainingMs(turn.cny, now - baseline.at, left)
+    const remaining = burnRemainingMs(snapshot.cny, snapshot.minutes * 60_000, left)
     if (remaining === undefined) return undefined
 
-    const minutes = Math.max(1, Math.round(remaining / 60_000))
-    return minutes < 60
-      ? t('burn.minutes', { minutes })
-      : t('burn.hours', { hours: Math.floor(minutes / 60), minutes: minutes % 60 })
-  }, [turn, baseline, balance, now, t])
+    const raw = Math.floor(remaining / 60_000)
+    const minutes =
+      raw < 30 ? Math.max(5, Math.round(raw / 5) * 5) : raw < 120 ? Math.round(raw / 10) * 10 : Math.round(raw / 30) * 30
+
+    return t('burn.line', {
+      rate: formatCost(snapshot.cny / snapshot.minutes),
+      duration:
+        minutes < 60
+          ? t('burn.minutes', { minutes })
+          : t('burn.hours', { hours: Math.floor(minutes / 60), minutes: minutes % 60 }),
+    })
+  }, [balance, turnCny, t])
 
   const flatCny = priced.kind === 'ok' ? priced.totalCny + session.searchCny : 0
   const rootCny = attributed?.totalCny ?? flatCny
