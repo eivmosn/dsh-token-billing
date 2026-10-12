@@ -13,6 +13,9 @@ import {
 
 const DEEPSEEK_PROVIDER = /deepseek/i
 
+export const SEARCH_USD_PER_CALL = 0.01
+export const SEARCH_TOOL = /web_search|websearch/i
+
 export interface BilledRequest {
   at: number
   provider?: string
@@ -32,6 +35,8 @@ export interface AttributedGroup {
 
 export interface Attribution {
   groups: AttributedGroup[]
+  searches: number
+  searchCny: number
   totalCny: number
   totalTokens: number
   peakCny: number
@@ -88,7 +93,15 @@ interface Pending {
   buckets: UsageBuckets
 }
 
-export function attributeRequests(requests: readonly BilledRequest[], book: PriceBook): Attribution {
+export function searchSpend(searches: number): number {
+  return toCny(searches * SEARCH_USD_PER_CALL)
+}
+
+export function attributeRequests(
+  requests: readonly BilledRequest[],
+  book: PriceBook,
+  searches = 0,
+): Attribution {
   const pending = new Map<string, Pending>()
 
   for (const request of requests) {
@@ -156,9 +169,13 @@ export function attributeRequests(requests: readonly BilledRequest[], book: Pric
 
   groups.sort((left, right) => right.cny - left.cny)
 
+  const searchCny = searchSpend(searches)
+
   return {
     groups,
-    totalCny,
+    searches,
+    searchCny,
+    totalCny: totalCny + searchCny,
     totalTokens,
     peakCny,
     offCny,
@@ -179,6 +196,7 @@ export function attributedBuckets(attribution: Attribution): UsageBuckets {
 
 export interface TurnSpend {
   tokens: number
+  searches: number
   cny: number
 }
 
@@ -199,12 +217,14 @@ export function attributeTurn(
   baseline: TurnWindow,
   current: UsageBuckets,
   fallback: FallbackRoute,
+  searches = 0,
 ): TurnSpend | undefined {
   if (Object.keys(book.branches).length === 0) return undefined
 
   const run = attributeRequests(
     requests.filter((request) => request.at >= baseline.at),
     book,
+    searches,
   )
 
   const delta = subtractBuckets(current, baseline.usage)
@@ -216,10 +236,11 @@ export function attributeTurn(
       : undefined
 
   const tokens = run.totalTokens + (restPriced?.kind === 'ok' ? restPriced.totalTokens : 0)
-  if (tokens === 0) return undefined
+  if (tokens === 0 && run.searches === 0) return undefined
 
   return {
     tokens,
+    searches: run.searches,
     cny: run.totalCny + (restPriced?.kind === 'ok' ? restPriced.totalCny : 0),
   }
 }

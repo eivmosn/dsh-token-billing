@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import {
+  SEARCH_USD_PER_CALL,
   attributeRequests,
   attributeTurn,
   countTokens,
@@ -192,5 +193,36 @@ describe('pricing one turn', () => {
 
   it('says nothing when there is no book to price with', () => {
     expect(attributeTurn([], emptyBook(), opened, { uncachedInputTokens: 10 }, fallback)).toBeUndefined()
+  })
+})
+
+describe('web search fees', () => {
+  const opened = { usage: { uncachedInputTokens: 0 }, at: PEAK }
+  const fallback = { provider: 'deepseek', model: 'deepseek-flash', at: new Date(OFF) }
+
+  it('bills each search on top of the tokens', () => {
+    const withSearch = attributeRequests(
+      [request(PEAK, 'deepseek-flash', { uncachedInputTokens: 1_000_000 })],
+      book,
+      3,
+    )
+
+    expect(withSearch.searches).toBe(3)
+    expect(withSearch.searchCny).toBeCloseTo(3 * SEARCH_USD_PER_CALL * (1 / 0.15), 6)
+    expect(withSearch.totalCny).toBeCloseTo(2 + 3 * SEARCH_USD_PER_CALL * (1 / 0.15), 6)
+  })
+
+  it('bills a session that only searched, with no tokens at all', () => {
+    const searchOnly = attributeRequests([], book, 2)
+
+    expect(searchOnly.totalTokens).toBe(0)
+    expect(searchOnly.totalCny).toBeCloseTo(2 * SEARCH_USD_PER_CALL * (1 / 0.15), 6)
+  })
+
+  it('counts the searches made during the turn', () => {
+    const spend = attributeTurn([], book, opened, {}, fallback, 1)
+
+    expect(spend?.searches).toBe(1)
+    expect(spend?.cny).toBeCloseTo(SEARCH_USD_PER_CALL * (1 / 0.15), 6)
   })
 })

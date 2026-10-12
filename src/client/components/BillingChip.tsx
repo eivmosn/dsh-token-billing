@@ -26,7 +26,7 @@ import { MEASURE_STYLE, POSTURE_REFRESH_MS } from '../constants.ts'
 import { useCountUp } from '../hooks/use-count-up.ts'
 import { useOverlay } from '../hooks/use-overlay.ts'
 import { t } from '../locale.ts'
-import { billedRequestsOf } from '../trajectory.ts'
+import { billedRequestsOf, searchCallsIn } from '../trajectory.ts'
 import { collectChildUsage } from '../session-tree.ts'
 import { accountBalance } from '../stores/account-balance.ts'
 import { readTurnBaseline, writeTurnBaseline, type TurnBaseline } from '../stores/turn-baseline.ts'
@@ -102,9 +102,15 @@ export function BillingChip({
   const trajectory = useTrajectory((snapshot: unknown) => snapshot)
   const requests = react.useMemo(() => billedRequestsOf(trajectory), [trajectory])
 
+  const searchCalls = react.useMemo(() => searchCallsIn(trajectory), [trajectory])
+  const searches = react.useMemo(
+    () => searchCalls.reduce((total, call) => total + call.queries, 0),
+    [searchCalls],
+  )
+
   const session = react.useMemo(
-    () => attributeRequests(requests, book.book),
-    [requests, book.book],
+    () => attributeRequests(requests, book.book, searches),
+    [requests, book.book, searches],
   )
 
   const priced = react.useMemo(
@@ -160,19 +166,20 @@ export function BillingChip({
     return { rows, totalCny, totalTokens }
   }, [session, usage, book.book, provider, model, now])
 
-  const turn = react.useMemo(
-    () =>
-      baseline === undefined || usage === undefined
-        ? undefined
-        : attributeTurn(requests, book.book, baseline, usage, {
-            provider,
-            model,
-            at: new Date(now),
-          }),
-    [baseline, usage, requests, book.book, provider, model, now],
-  )
+  const turn = react.useMemo(() => {
+    if (baseline === undefined || usage === undefined) return undefined
+    const since = searchCalls
+      .filter((call) => call.at >= baseline.at)
+      .reduce((total, call) => total + call.queries, 0)
+    return attributeTurn(requests, book.book, baseline, usage, {
+      provider,
+      model,
+      at: new Date(now),
+    }, since)
+  }, [baseline, usage, requests, book.book, provider, model, now, searchCalls])
 
-  const rootCny = attributed?.totalCny ?? (priced.kind === 'ok' ? priced.totalCny : 0)
+  const flatCny = priced.kind === 'ok' ? priced.totalCny + session.searchCny : 0
+  const rootCny = attributed?.totalCny ?? flatCny
   const rootTokens = attributed?.totalTokens ?? (priced.kind === 'ok' ? priced.totalTokens : 0)
   const totalCny = rootCny + (priced.kind === 'ok' ? (tree?.totalCny ?? 0) : 0)
   const totalTokens = rootTokens + (priced.kind === 'ok' ? (tree?.totalTokens ?? 0) : 0)
@@ -218,6 +225,16 @@ export function BillingChip({
           </span>
           <span className="tb-turn" data-token-billing-turn="">
             {`${t('chip.turnTokens', { tokens: formatTokens(turn.tokens) })} ${t('chip.turnCost', { cost: formatCost(animatedTurnCny) })}`}
+          </span>
+        </>
+      )}
+      {searches > 0 && (
+        <>
+          <span className="tb-sep" aria-hidden>
+            ·
+          </span>
+          <span className="tb-turn" data-token-billing-search="">
+            {t('chip.search', { count: searches, cost: formatCost(session.searchCny) })}
           </span>
         </>
       )}
@@ -285,6 +302,7 @@ export function BillingChip({
             totalTokens={totalTokens}
             agents={agents}
             turn={turn}
+            search={searches > 0 ? { calls: searches, cny: session.searchCny } : undefined}
             panelRef={panelRef}
             style={pos ?? MEASURE_STYLE}
           />,

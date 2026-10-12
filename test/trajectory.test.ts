@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { billedRequestsOf } from '../src/client/trajectory.ts'
+import { billedRequestsOf, searchCallsIn, searchCallsOf } from '../src/client/trajectory.ts'
 
 const snapshot = {
   eventNodes: [
@@ -71,5 +71,59 @@ describe('reading billed requests off the trajectory', () => {
     expect(billedRequestsOf({})).toEqual([])
     expect(billedRequestsOf({ eventNodes: 'nope' })).toEqual([])
     expect(billedRequestsOf({ eventNodes: [null, 7, 'x'] })).toEqual([])
+  })
+})
+
+describe('counting billable web searches', () => {
+  const withCalls = {
+    eventNodes: [
+      {
+        kind: 'assistant',
+        time: 1_000,
+        blocks: [
+          { kind: 'text', text: 'let me look' },
+          { kind: 'tool-call', callId: 'c1', name: 'web_search', argsRaw: '{"queries":["a","b"]}' },
+          { kind: 'tool-call', callId: 'c2', name: 'read_file', argsRaw: '{"path":"x"}' },
+        ],
+      },
+      {
+        kind: 'assistant',
+        time: 2_000,
+        blocks: [{ kind: 'tool-call', callId: 'c3', name: 'web_search', argsRaw: '{"query":"c"}' }],
+      },
+      { kind: 'tool-result', time: 3_000, blocks: [] },
+    ],
+  }
+
+  it('counts every query a search call carries, not just the call', () => {
+    expect(searchCallsOf(withCalls)).toBe(3)
+    expect(searchCallsIn(withCalls)).toEqual([
+      { at: 1_000, queries: 2 },
+      { at: 2_000, queries: 1 },
+    ])
+  })
+
+  it('ignores every other tool', () => {
+    const other = {
+      eventNodes: [
+        {
+          kind: 'assistant',
+          time: 1,
+          blocks: [{ kind: 'tool-call', callId: 'x', name: 'run_code', argsRaw: '{}' }],
+        },
+      ],
+    }
+    expect(searchCallsOf(other)).toBe(0)
+  })
+
+  it('survives unparsable arguments and unknown snapshots', () => {
+    const broken = {
+      eventNodes: [
+        { kind: 'assistant', time: 1, blocks: [{ kind: 'tool-call', name: 'web_search', argsRaw: '{' }] },
+      ],
+    }
+    expect(searchCallsOf(broken)).toBe(1)
+    expect(searchCallsOf(undefined)).toBe(0)
+    expect(searchCallsIn({})).toEqual([])
   })
 })

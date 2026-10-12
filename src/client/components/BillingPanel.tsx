@@ -46,6 +46,11 @@ const BUCKET_LABEL: Record<string, string | undefined> = {
   outputTokens: 'bucket.out',
 }
 
+export interface SearchSpend {
+  calls: number
+  cny: number
+}
+
 export interface BillingPanelProps {
   priced: PriceResult
   balance: BalanceState
@@ -57,6 +62,7 @@ export interface BillingPanelProps {
   rows?: PricedRow[]
   totalTokens?: number
   agents?: AgentUsage
+  search?: SearchSpend
   turn?: { tokens: number; cny: number }
 }
 
@@ -88,6 +94,7 @@ export function BillingPanel({
   rows,
   totalTokens,
   agents,
+  search,
   turn,
 }: BillingPanelProps): ReactNode {
   const animatedTurnCny = useCountUp(turn?.cny ?? 0)
@@ -172,6 +179,21 @@ export function BillingPanel({
               <dt>{t('panel.model')}</dt>
               <dd data-token-billing-model="">{priced.modelName}</dd>
             </div>
+            {search === undefined || search.calls === 0 ? null : (
+              <div
+                className="tb-row"
+                data-token-billing-search=""
+                title={t('panel.searchBasis')}
+              >
+                <dt>{t('panel.search')}</dt>
+                <dd>
+                  {t('panel.searchValue', {
+                    count: search.calls,
+                    cost: formatCost(search.cny),
+                  })}
+                </dd>
+              </div>
+            )}
             {detailRows.flatMap((row) =>
               row.tokens === 0
                 ? []
