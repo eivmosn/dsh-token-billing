@@ -182,15 +182,15 @@ button.tb-pill[aria-expanded="true"] {
   text-align: right;
 }
 
-.tb-row:hover {
+.tb-agentRow:hover {
   background-color: color-mix(in srgb, var(--dsw-alias-label-primary) 4%, transparent);
 }
 
-.tb-row:hover dt {
+.tb-agentRow:hover dt {
   color: var(--dsw-alias-label-secondary);
 }
 
-.tb-row:hover dd {
+.tb-agentRow:hover dd {
   color: var(--dsw-alias-label-primary);
 }
 
