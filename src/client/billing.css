@@ -400,6 +400,7 @@ button.tb-pill[aria-expanded="true"] {
 }
 
 .tb-balanceRow {
+  position: relative;
   color: var(--dsw-alias-label-tertiary);
   justify-content: space-between;
   align-items: baseline;
@@ -553,3 +554,26 @@ button.tb-pill[aria-expanded="true"] {
 }
 
 
+
+.tb-balanceTip {
+  position: absolute;
+  right: 0;
+  bottom: calc(100% + 6px);
+  z-index: 1;
+  padding: 4px 8px;
+  border-radius: 6px;
+  background-color: var(--dsw-alias-tooltip-bg);
+  color: var(--dsw-static-neutral-bluish-00);
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 16px;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.15s ease;
+}
+
+.tb-balanceLink:hover ~ .tb-balanceTip,
+.tb-balanceLink:focus-visible ~ .tb-balanceTip {
+  opacity: 1;
+}

@@ -1,6 +1,5 @@
 import {
   IconDataOutlineRegular,
-  Tooltip,
   useDismissOnOutsidePointer,
 } from '@deepseek-ai/dsh-client-ui-primitives'
 import {
@@ -346,7 +345,7 @@ export function BillingPanel({
       <div className="tb-balanceRow" data-token-billing-balance>
         <span className="tb-balanceLabel">{t('panel.balance')}</span>
         {balance.status === 'ready' ? (
-          <Tooltip label={t('balance.usageTip')} side="top" portal>
+          <>
             <a
               className="tb-balanceValue tb-balanceLink"
               href={USAGE_URL}
@@ -357,7 +356,10 @@ export function BillingPanel({
             >
               <BalanceValue state={balance} />
             </a>
-          </Tooltip>
+            <span className="tb-balanceTip" role="tooltip">
+              {t('balance.usageTip')}
+            </span>
+          </>
         ) : (
           <span className="tb-balanceValue" data-token-billing-balance-value={balance.status}>
             <BalanceValue state={balance} />

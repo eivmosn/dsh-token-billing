@@ -95,6 +95,13 @@ function panel(
 }
 
 describe('BillingPanel', () => {
+  it('carries the balance tooltip in the row, revealed on hover', () => {
+    const html = panel(priced)
+
+    expect(html).toContain('role="tooltip"')
+    expect(html).toContain('点击查看')
+  })
+
   it('breaks a priced session down by bucket and total', () => {
     const html = panel(priced)
 
