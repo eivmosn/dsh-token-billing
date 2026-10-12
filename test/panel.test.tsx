@@ -15,7 +15,6 @@ import {
 import { UnitRatesCard } from '../src/client/components/UnitRatesCard.tsx'
 
 const OFF_PEAK = new Date('2026-10-12T12:00:00Z')
-const PEAK = new Date('2026-10-12T01:30:00Z')
 
 const book = buildBook({
   deepseek: {
@@ -36,7 +35,6 @@ const usage = {
 }
 
 const priced = priceUsage(usage, book, 'deepseek', 'deepseek-flash', OFF_PEAK)
-const peakPriced = priceUsage(usage, book, 'deepseek', 'deepseek-flash', PEAK)
 
 const balance: BalanceState = {
   status: 'ready',
@@ -114,26 +112,23 @@ describe('BillingPanel', () => {
     const html = panel(priced)
     const details = /data-token-billing-details[^>]*>(.*?)<\/dl>/.exec(html)?.[1] ?? ''
 
-    expect(details.match(/class="tb-row"/g)).toHaveLength(5)
-    expect(details).toContain('<div class="tb-row"><dt>模型</dt><dd data-token-billing-model="">')
+    expect(details.match(/class="tb-row/g)).toHaveLength(5)
+    expect(details).toContain('<dt>模型</dt><dd data-token-billing-model="">')
     expect(details).toContain('</dd></div>')
   })
 
-  it('keeps the unit rates collapsed until asked for', () => {
+  it('hangs the rate reference off the model row, collapsed until asked for', () => {
     const closed = panel(priced)
+
     expect(closed).toContain('data-token-billing-rates-toggle')
     expect(closed).toContain('aria-expanded="false"')
     expect(closed).toContain('data-open="false"')
-    expect(closed).toContain('每百万 token 单价')
+    expect(closed).toContain('DeepSeek V4 Flash')
+    expect(closed).not.toContain('费率参照')
 
     const open = panel(priced, { open: true })
     expect(open).toContain('aria-expanded="true"')
     expect(open).toContain('data-open="true"')
-  })
-
-  it('labels the toggle with the posture the estimate was priced at', () => {
-    expect(panel(priced)).toContain('低谷')
-    expect(panel(peakPriced)).toContain('高峰')
   })
 
   it('shows the whole tree total in the title, not just the root session', () => {
@@ -350,10 +345,6 @@ describe('UnitRatesCard', () => {
     expect(card).toContain('1 CNY = 0.15 USD')
   })
 
-  it('shows which period the clock is in, beside the rates', () => {
-    expect(panel(priced)).toContain('>低谷<')
-    expect(panel(peakPriced)).toContain('>高峰<')
-  })
 })
 
 describe('BillingHoverCard', () => {
@@ -404,7 +395,7 @@ describe('the English locale', () => {
       }),
     )
 
-    for (const label of ['Session', 'This turn', 'Model', 'Balance', 'Per 1M tokens', 'Uncached']) {
+    for (const label of ['Session', 'This turn', 'Model', 'Balance', 'Uncached']) {
       expect(html).toContain(label)
     }
     expect(html).not.toMatch(CJK)

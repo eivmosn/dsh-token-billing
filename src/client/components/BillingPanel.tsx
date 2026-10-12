@@ -6,7 +6,6 @@ import {
 import {
   useCallback,
   useEffect,
-  useId,
   useLayoutEffect,
   useRef,
   useState,
@@ -68,7 +67,7 @@ export interface BillingPanelProps {
   turn?: { tokens: number; cny: number }
 }
 
-function Chevron({ className = 'tb-rateToggleChevron' }: { className?: string }): ReactNode {
+function Chevron({ className = 'tb-agentChevron' }: { className?: string }): ReactNode {
   return (
     <svg
       className={className}
@@ -108,7 +107,7 @@ export function BillingPanel({
   const detailTokens = totalTokens ?? (priced.kind === 'ok' ? priced.totalTokens : 0)
 
   const [ratesOpen, setRatesOpen] = useState(defaultRatesOpen)
-  const ratesId = useId()
+  const canPortal = typeof document !== 'undefined'
 
   const [agentsOpen, setAgentsOpen] = useState(false)
   const [agentsPos, setAgentsPos] = useState<CSSProperties | null>(null)
@@ -123,6 +122,17 @@ export function BillingPanel({
   }, [])
 
   useDismissOnOutsidePointer(agentTriggerRef, agentsOpen, setAgentsVisible, agentCardRef)
+
+  const rateTriggerRef = useRef<HTMLButtonElement>(null)
+  const rateCardRef = useRef<HTMLDivElement>(null)
+  const [ratesPos, setRatesPos] = useState<CSSProperties | null>(null)
+
+  const setRatesVisible = useCallback((open: boolean) => {
+    setRatesOpen(open)
+    if (!open) setRatesPos(null)
+  }, [])
+
+  useDismissOnOutsidePointer(rateTriggerRef, ratesOpen, setRatesVisible, rateCardRef)
 
   useBrowserLayoutEffect(() => {
     if (!agentsOpen) return undefined
@@ -147,6 +157,30 @@ export function BillingPanel({
       document.removeEventListener('scroll', place, true)
     }
   }, [agentsOpen, panelRef])
+
+  useBrowserLayoutEffect(() => {
+    if (!ratesOpen) return undefined
+
+    const place = (): void => {
+      const panel = panelRef.current
+      const card = rateCardRef.current
+      if (panel === null || card === null) return
+      setRatesPos(
+        subagentCardPosition(panel.getBoundingClientRect(), card.getBoundingClientRect(), {
+          width: window.innerWidth,
+          height: window.innerHeight,
+        }),
+      )
+    }
+
+    place()
+    window.addEventListener('resize', place)
+    document.addEventListener('scroll', place, true)
+    return () => {
+      window.removeEventListener('resize', place)
+      document.removeEventListener('scroll', place, true)
+    }
+  }, [ratesOpen, panelRef])
 
   useEffect(() => {
     if (!agentsOpen) return undefined
@@ -179,9 +213,21 @@ export function BillingPanel({
       {priced.kind === 'ok' && (
         <>
           <dl className="tb-details" data-token-billing-details>
-            <div className="tb-row">
+            <div className="tb-row" data-open={ratesOpen ? 'true' : 'false'}>
               <dt>{t('panel.model')}</dt>
-              <dd data-token-billing-model="">{priced.modelName}</dd>
+              <dd data-token-billing-model="">
+                <button
+                  ref={rateTriggerRef}
+                  type="button"
+                  className="tb-agentTrigger tb-rateTrigger"
+                  aria-expanded={ratesOpen}
+                  data-token-billing-rates-toggle
+                  onClick={() => setRatesVisible(!ratesOpen)}
+                >
+                  {priced.modelName}
+                  <Chevron className="tb-agentChevron" />
+                </button>
+              </dd>
             </div>
             {search === undefined || search.calls === 0 ? null : (
               <div
@@ -251,7 +297,8 @@ export function BillingPanel({
             )}
           </dl>
 
-          {agentListable &&
+          {canPortal &&
+            agentListable &&
             agentsOpen &&
             createPortal(
               <SubagentCard
@@ -262,26 +309,19 @@ export function BillingPanel({
               document.body,
             )}
 
-          <button
-            type="button"
-            className="tb-rateToggle"
-            aria-expanded={ratesOpen}
-            aria-controls={ratesId}
-            data-token-billing-rates-toggle
-            onClick={() => setRatesOpen(!ratesOpen)}
-          >
-            <span className="tb-rateToggleLabel">{t('panel.rates')}</span>
-            <span className="tb-rateToggleHint">
-              {t(priced.peak ? 'panel.peak' : 'panel.offPeak')}
-            </span>
-            <Chevron />
-          </button>
-
-          <div className="tb-rateReveal" data-open={ratesOpen} id={ratesId}>
-            <div className="tb-rateRevealInner">
-              <UnitRatesCard rate={priced.rate} />
-            </div>
-          </div>
+          {canPortal &&
+            ratesOpen &&
+            createPortal(
+              <div
+                className="tb-subagents tb-rateFloat"
+                ref={rateCardRef}
+                style={ratesPos ?? MEASURE_STYLE}
+              >
+                <div className="tb-subagentTitle">{t('panel.rates')}</div>
+                <UnitRatesCard rate={priced.rate} />
+              </div>,
+              document.body,
+            )}
         </>
       )}
 

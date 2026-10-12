@@ -243,73 +243,22 @@ button.tb-pill[aria-expanded="true"] {
   transform: rotate(90deg);
 }
 
-.tb-rateToggle {
-  appearance: none;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  width: 100%;
-  margin-top: 14px;
-  padding: 7px 10px;
-  border: 0;
-  border-radius: 10px;
-  background: color-mix(in srgb, var(--dsw-alias-label-primary) 4%, transparent);
-  color: var(--dsw-alias-label-secondary);
-  font: inherit;
-  font-weight: 500;
-  text-align: left;
-  cursor: pointer;
-  transition: background 0.18s ease, color 0.18s ease;
-}
 
-.tb-rateToggle:hover {
-  background: color-mix(in srgb, var(--dsw-alias-label-primary) 8%, transparent);
-  color: var(--dsw-alias-label-primary);
-}
 
-.tb-rateToggle:focus-visible {
-  outline: 2px solid var(--dsw-alias-brand-primary);
-  outline-offset: 1px;
-}
 
-.tb-rateToggleLabel {
-  flex: 1 1 auto;
-  min-width: 0;
-}
 
-.tb-rateToggleHint {
-  flex: none;
-  color: var(--dsw-alias-label-tertiary);
-  font-weight: 400;
-}
 
-.tb-rateToggleChevron {
-  flex: none;
-  transition: transform 0.24s cubic-bezier(0.4, 0, 0.2, 1);
-}
 
 .tb-rateToggle[aria-expanded="true"] .tb-rateToggleChevron {
   transform: rotate(180deg);
 }
 
-.tb-rateReveal {
-  display: grid;
-  grid-template-rows: 0fr;
-  opacity: 0;
-  transition: grid-template-rows 0.28s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.22s ease;
-}
 
 .tb-rateReveal[data-open="true"] {
   grid-template-rows: 1fr;
   opacity: 1;
 }
 
-.tb-rateRevealInner {
-  min-height: 0;
-  overflow: hidden;
-  visibility: hidden;
-  transition: visibility 0s linear 0.28s;
-}
 
 .tb-rateReveal[data-open="true"] .tb-rateRevealInner {
   visibility: visible;
@@ -573,9 +522,6 @@ button.tb-pill[aria-expanded="true"] {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .tb-rateToggleChevron,
-  .tb-rateReveal,
-  .tb-rateRevealInner,
   .tb-row,
   .tb-details dt,
   .tb-details dd,
@@ -589,4 +535,34 @@ button.tb-pill[aria-expanded="true"] {
   .tb-running {
     animation: none;
   }
+}
+
+.tb-rateTrigger {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+.tb-rateTrigger:hover {
+  color: var(--dsw-alias-label-primary);
+}
+
+
+
+.tb-rateFloat {
+  width: 268px;
+  max-height: none;
+  padding: 10px 12px 12px;
+}
+
+.tb-rateFloat .tb-rateCard {
+  margin-top: 0;
 }

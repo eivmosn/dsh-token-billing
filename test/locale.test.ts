@@ -16,6 +16,7 @@ describe('the locale binding', () => {
     expect(t('panel.turn')).toBe('This turn')
     expect(t('chip.turnTokens', { tokens: '1,234' })).toBe('turn 1,234 tok')
     expect(t('bucket.write')).toBe('Cache write')
+    expect(t('panel.rates')).toBe('Rate reference')
   })
 
   it('follows a language change made after the plugin bound', () => {
@@ -48,7 +49,6 @@ describe('the locale binding', () => {
       'bucket.hit',
       'bucket.write',
       'bucket.out',
-      'panel.rates',
       'panel.session',
       'panel.turn',
       'panel.balance',
